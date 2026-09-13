@@ -2,7 +2,10 @@ const SUPABASE_URL = "https://qcjjqdkjfvnbslbpnrgk.supabase.co";
 const SUPABASE_KEY = "sb_publishable_27mV2bABNSGQYPkGEF-T4g_XBQtb2r7";
 const PAGE_PARAMS = new URLSearchParams(location.search);
 const PLATFORM_ENTRY = PAGE_PARAMS.has("platform");
-const SHOP_SLUG = PAGE_PARAMS.get("tenant");
+const HOST_TENANTS = Object.freeze({
+  "palazzo-barber.vercel.app": "palazzo",
+});
+const SHOP_SLUG = PAGE_PARAMS.get("tenant") || HOST_TENANTS[location.hostname.toLowerCase()] || null;
 const CHRONA_HOME = !SHOP_SLUG && !PLATFORM_ENTRY;
 const AUTH_CALLBACK = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : "");
 const PASSWORD_FLOW = ["recovery","invite"].includes(AUTH_CALLBACK.get("type")) && !!AUTH_CALLBACK.get("access_token");
