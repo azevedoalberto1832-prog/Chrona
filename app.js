@@ -53,7 +53,10 @@ async function edge(name,body) {
   if(!authSession?.access_token) throw new Error("Sessão expirada. Entre novamente.");
   const response=await fetch(`${SUPABASE_URL}/functions/v1/${name}`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${authSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify(body)});
   const data=await response.json().catch(()=>null);
-  if(!response.ok) throw new Error(data?.error||data?.message||"Não foi possível concluir a operação");
+  if(!response.ok) {
+    const metaCode=data?.metaCode?` (Meta código ${data.metaCode})`:"";
+    throw new Error(`${data?.error||data?.message||"Não foi possível concluir a operação"}${metaCode}`);
+  }
   return data;
 }
 let PEOPLE = [];
