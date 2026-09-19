@@ -4,6 +4,11 @@ import { createClient } from "@supabase/supabase-js";
 const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
+  // Authentication is enforced with the caller's Supabase bearer token. A
+  // wildcard keeps the function usable after the custom domain goes live.
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
+  "access-control-allow-methods": "POST, OPTIONS",
 };
 const GRAPH_API_VERSION = "v26.0";
 
@@ -26,6 +31,7 @@ function environmentKey(group: "SUPABASE_PUBLISHABLE_KEYS" | "SUPABASE_SECRET_KE
 }
 
 Deno.serve(async (request: Request) => {
+  if (request.method === "OPTIONS") return new Response("ok", { status: 204, headers: JSON_HEADERS });
   if (request.method !== "POST") return json({ error: "Método não permitido" }, 405);
   if (Number(request.headers.get("content-length") ?? 0) > 16_000) {
     return json({ error: "Corpo da requisição muito grande" }, 413);
