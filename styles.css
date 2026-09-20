@@ -744,6 +744,27 @@ body[data-direction="serene"] .tabs button {
   background: #fff;
   color: var(--ink);
 }
+body[data-direction="serene"] .field input,
+body[data-direction="serene"] .field select,
+body[data-direction="serene"] .field textarea,
+body[data-direction="serene"] .toolbar input,
+body[data-direction="serene"] .toolbar select {
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--brand-primary);
+}
+body[data-direction="serene"] .field input::placeholder,
+body[data-direction="serene"] .field textarea::placeholder,
+body[data-direction="serene"] .toolbar input::placeholder {
+  color: color-mix(in srgb, var(--brand-ink) 64%, #fff);
+  opacity: 1;
+}
+body[data-direction="serene"] .field input:-webkit-autofill,
+body[data-direction="serene"] .field textarea:-webkit-autofill,
+body[data-direction="serene"] .field select:-webkit-autofill {
+  -webkit-text-fill-color: var(--ink);
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  box-shadow: 0 0 0 1000px #fff inset;
+}
 body[data-direction="serene"] .location {
   background: color-mix(in srgb,var(--brand-primary) 17%,#fff);
 }
@@ -1067,6 +1088,17 @@ body[data-direction="studio"] .field textarea,
 body[data-direction="studio"] .toolbar input,
 body[data-direction="studio"] .toolbar select,
 body[data-direction="studio"] .tabs button { background:#fff; color:var(--ink); }
+body[data-direction="studio"] .field input,
+body[data-direction="studio"] .field select,
+body[data-direction="studio"] .field textarea,
+body[data-direction="studio"] .toolbar input,
+body[data-direction="studio"] .toolbar select { -webkit-text-fill-color:var(--ink);caret-color:var(--brand-primary); }
+body[data-direction="studio"] .field input::placeholder,
+body[data-direction="studio"] .field textarea::placeholder,
+body[data-direction="studio"] .toolbar input::placeholder { color:color-mix(in srgb,var(--brand-ink) 62%,#fff);opacity:1; }
+body[data-direction="studio"] .field input:-webkit-autofill,
+body[data-direction="studio"] .field textarea:-webkit-autofill,
+body[data-direction="studio"] .field select:-webkit-autofill { -webkit-text-fill-color:var(--ink);-webkit-box-shadow:0 0 0 1000px #fff inset;box-shadow:0 0 0 1000px #fff inset; }
 body[data-direction="studio"] .admin { background:var(--paper); }
 body[data-direction="studio"] .sidebar { background:#fff; color:var(--ink); }
 body[data-direction="studio"] .nav button { color:var(--muted); }

@@ -204,6 +204,7 @@ function inferVisualDirection(primary,ink,business="services"){
 const directionLabel=(direction)=>({editorial:"Editorial",studio:"Studio",serene:"Sereno"})[direction]||"Studio";
 function applyTenantBrand(shop){
   const direction=["editorial","studio","serene"].includes(shop?.visual_direction)?shop.visual_direction:inferVisualDirection(shop?.primary_color,shop?.secondary_color,shop?.business_type);
+  if(shop?.slug) document.body.dataset.tenant=shop.slug;
   document.body.dataset.direction=direction;
   const primary=shop.primary_color||"#2667ff";
   const secondary=shop.secondary_color||"#152238";
