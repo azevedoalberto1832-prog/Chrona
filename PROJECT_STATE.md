@@ -24,6 +24,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | Caixa ligado à conclusão de atendimento | IMPLEMENTADO | Estrutura/RPCs versionadas; preservar idempotência. |
 | Lembrete/retorno por serviço | IMPLEMENTADO | Migrations e arquitetura definem `return_interval_days` e geração de retorno. |
 | Super Admin e gestão de tenants/assinaturas | IMPLEMENTADO | UI, perfis de plataforma, onboarding e controles existem no repositório. |
+| Direção visual “Pulso do Tempo” no painel Chrona | IMPLEMENTADO | A plataforma central usa palco escuro preto/vermelho/laranja e superfícies operacionais claras para preservar leitura; publicação será confirmada após o workflow do Pages. |
 | Onboarding de tenant + convite do responsável | IMPLEMENTADO | Edge Function autenticada `tenant-onboarding` e RPCs relacionadas. |
 | Direção visual automática por tenant | IMPLEMENTADO | `visual_direction` e seleção `editorial`/`studio`/`serene` estão no código/migration. Não equivale à biblioteca de templates avançada discutida futuramente. |
 | CRM com pipelines/etapas/oportunidades | IMPLEMENTADO | Schema e CRUD constam do código/documentação. |
