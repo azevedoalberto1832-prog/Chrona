@@ -35,6 +35,8 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | Biblioteca controlada de landing pages | VALIDADO | Renderer único em `site-engine.js`, quatro templates, oito paletas, cinco pares tipográficos, variantes allowlisted, seções ordenáveis/ocultáveis e preview do Admin. Palazzo usa Luxury e Nayara usa Clean por dados, sem fork por tenant. |
 | Rascunho e publicação do site | VALIDADO | `tenant_site_configs` mantém `draft_config` e `published_config`; leitura pública expõe somente o publicado. RLS permite leitura ao membro e escrita somente a owner/platform admin. |
 | Fontes selecionáveis por cliente | IMPLEMENTADO | Cinco pares curados são selecionáveis no editor; não há CSS arbitrário nem upload de fontes externas. |
+| Mídia pública da landing | VALIDADO | Bucket `tenant-site-media` público para leitura, limitado a JPG de 5 MB; upload autenticado restrito a owner/platform admin e à pasta UUID do tenant. Editor aceita logo, hero, fotos opcionais por serviço e até 12 trabalhos recentes. |
+| Vitrine de trabalhos recentes | VALIDADO | Galeria só renderiza com fotos, usa card quadrado rotativo a cada 5 s, carrossel horizontal e respeita `prefers-reduced-motion`; conferida em desktop e 390 px. |
 | Subdomínio automático `cliente.chronasystems.com.br` | PLANEJADO | Não encontrada infraestrutura de provisionamento wildcard/subdomínio no repositório atual. |
 
 ## Integrações
@@ -68,18 +70,18 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 - O estado externo da Meta não é demonstrável apenas pelo repositório. Segredos, webhook real e templates aprovados precisam ser verificados no ambiente antes de marcar integração como VALIDADA.
 - O processador completo da máquina de estados do chatbot ainda aparece como próximo passo na arquitetura.
 - O mapeamento dos hostnames Palazzo está hardcoded no frontend; não existe ainda provisionamento genérico de domínio/subdomínio por tenant no código inspecionado.
-- O histórico de migrations remoto contém versões/recursos posteriores ausentes no Git (`20260919181325` a `20260919181521`) e timestamps divergentes em migrations de 12/09. As migrations `20260919235925` e `20260920004315` foram aplicadas e registradas isoladamente; não reparar nem forçar o restante sem reconciliar a origem dessas versões.
+- O histórico de migrations remoto contém versões/recursos posteriores ausentes no Git (`20260919181325` a `20260919181521`) e timestamps divergentes em migrations de 12/09. As migrations `20260919235925`, `20260920004315` e `20260920012106` foram aplicadas e registradas isoladamente; não reparar nem forçar o restante sem reconciliar a origem dessas versões.
 - README descreve várias capacidades como funcionalidades; agentes devem confirmar cada uma contra código/migrations antes de elevar seu estado para VALIDADO/PUBLICADO.
 
 ## Última alteração relevante
 
-Em 19/09/2026, a migration `20260920004315_add_tenant_site_builder.sql` foi aplicada e registrada no Supabase Chrona. O motor de landing multi-tenant passou a usar o mesmo renderer no preview e na página pública, com rascunho/publicação e RLS. Testes remotos confirmaram uma configuração por tenant, acesso anônimo negado à tabela, RPC pública limitada ao conteúdo publicado, Palazzo em Luxury, Nayara em Clean, zero slots passados e zero grupos de telefone duplicado.
+Em 19/09/2026, a migration `20260920012106_add_tenant_site_media.sql` foi aplicada e registrada no Supabase Chrona. O editor passou a aceitar JPG para logo, hero, serviços e galeria, sem renderizar mídia ausente. A vitrine rotativa e o carrossel foram validados em desktop/mobile; bucket, MIME, limite de 5 MB e política de upload por tenant foram confirmados no banco.
 
 ## Próximo incremento recomendado
 
 Antes de iniciar novas funcionalidades, verificar o ambiente real da integração Meta e fechar o ponto já aberto pela arquitetura: segredos/callback/templates e processador da máquina de estados do chatbot, com piloto controlado e evidência funcional antes de marcar como VALIDADO.
 
-O próximo incremento da landing deve focar mídia gerenciada (upload/storage com limites e recorte), sem abrir CSS arbitrário nem atravessar o Chrona Core.
+O próximo incremento da landing pode adicionar recorte/compressão de imagem no navegador e legendas individuais, sem abrir CSS arbitrário nem atravessar o Chrona Core.
 
 ## Não fazer
 

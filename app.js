@@ -642,6 +642,18 @@ const nav = [
 const siteShop=()=>({name:db.settings.shop,address:db.settings.address,phone:db.settings.phone,open:db.settings.open,close:db.settings.close,breakStart:db.settings.breakStart,breakEnd:db.settings.breakEnd,instagram:db.settings.instagram,logo:db.settings.logo,description:db.settings.description});
 const siteOptions=(items,selected)=>Object.entries(items).map(([id,item])=>`<option value="${esc(id)}" ${id===selected?"selected":""}>${esc(item.name||ChronaSite.variantNames[id]||id)}</option>`).join("");
 const siteVariantOptions=(type,selected)=>ChronaSite.variants[type].map((id)=>`<option value="${esc(id)}" ${id===selected?"selected":""}>${esc(ChronaSite.variantNames[id]||id)}</option>`).join("");
+const SITE_MEDIA_BUCKET="tenant-site-media";
+const siteMediaPicker=(kind,url,label,multiple=false)=>`<div class="site-media-upload">${url?`<img src="${esc(url)}" alt="${esc(label)}">`:'<span class="site-media-empty">＋</span>'}<span><b>${esc(label)}</b><input type="file" accept="image/jpeg,.jpg,.jpeg" ${multiple?"multiple":""} data-site-upload="${esc(kind)}"><small>JPG de até 5 MB${multiple?" · até 12 fotos na galeria":""}</small>${url?`<button class="btn btn-ghost danger" type="button" data-site-clear-media="${esc(kind)}">Remover da página</button>`:""}</span></div>`;
+async function uploadSiteJpeg(file,kind){
+  if(!file||file.type!=="image/jpeg") throw new Error("Envie uma imagem JPG");
+  if(file.size>5*1024*1024) throw new Error("A imagem deve ter no máximo 5 MB");
+  const safeKind=String(kind||"gallery").replace(/[^a-z0-9-]/gi,"-").toLowerCase();
+  const path=`${currentProfile.barbershop_id}/${safeKind}/${Date.now()}-${crypto.randomUUID()}.jpg`;
+  const response=await fetch(`${SUPABASE_URL}/storage/v1/object/${SITE_MEDIA_BUCKET}/${path}`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${authSession.access_token}`,"Content-Type":"image/jpeg","cache-control":"31536000","x-upsert":"false"},body:file});
+  const data=await response.json().catch(()=>null);
+  if(!response.ok) throw new Error(data?.message||data?.error||"Não foi possível enviar a imagem");
+  return `${SUPABASE_URL}/storage/v1/object/public/${SITE_MEDIA_BUCKET}/${path}`;
+}
 function siteBuilderContent(){
   const config=ChronaSite.normalize(siteEditorConfig||siteConfigDraft||ChronaSite.preset("clean"));
   siteEditorConfig=config;
@@ -650,8 +662,10 @@ function siteBuilderContent(){
   return `<div class="site-builder"><div class="site-builder-controls">
     <section class="site-builder-block"><h3>Biblioteca controlada</h3><label class="field"><span>Buscar estilo</span><input id="site-library-search" placeholder="Ex.: dourado, moderno, serif"></label><div class="site-search-results" id="site-search-results"></div></section>
     <section class="site-builder-block"><h3>Direção visual</h3><label class="field"><span>Template</span><select data-site-field="template">${siteOptions(ChronaSite.templates,config.template)}</select></label><label class="field"><span>Paleta</span><select data-site-field="palette">${siteOptions(ChronaSite.palettes,config.palette)}</select></label><label class="field"><span>Tipografia</span><select data-site-field="fontPair">${siteOptions(ChronaSite.fonts,config.fontPair)}</select></label><div class="form-grid"><label class="field"><span>Hero</span><select data-site-variant="hero">${siteVariantOptions("hero",config.variants.hero)}</select></label><label class="field"><span>Botão</span><select data-site-variant="button">${siteVariantOptions("button",config.variants.button)}</select></label><label class="field"><span>Card</span><select data-site-variant="card">${siteVariantOptions("card",config.variants.card)}</select></label><label class="field"><span>Serviços</span><select data-site-variant="services">${siteVariantOptions("services",config.variants.services)}</select></label><label class="field"><span>Profissionais</span><select data-site-variant="professionals">${siteVariantOptions("professionals",config.variants.professionals)}</select></label></div></section>
-    <section class="site-builder-block"><h3>Hero e contato</h3><label class="field"><span>Sobretítulo</span><input data-site-content="hero.eyebrow" value="${esc(c.hero.eyebrow)}"></label><label class="field"><span>Título</span><input data-site-content="hero.title" value="${esc(c.hero.title)}" placeholder="Usa o nome da empresa se vazio"></label><label class="field"><span>Texto</span><textarea rows="3" data-site-content="hero.subtitle">${esc(c.hero.subtitle)}</textarea></label><label class="field"><span>Botão principal</span><input data-site-content="hero.ctaLabel" value="${esc(c.hero.ctaLabel)}"></label><label class="field"><span>Imagem do hero</span><input data-site-content="hero.imageUrl" value="${esc(c.hero.imageUrl)}" placeholder="https://... ou caminho da imagem"></label><label class="field"><span>Mensagem do WhatsApp</span><textarea rows="3" data-site-content="whatsappMessage">${esc(c.whatsappMessage)}</textarea></label></section>
-    <section class="site-builder-block"><h3>Conteúdo institucional</h3><label class="field"><span>Sobretítulo</span><input data-site-content="about.eyebrow" value="${esc(c.about.eyebrow)}"></label><label class="field"><span>Título</span><input data-site-content="about.title" value="${esc(c.about.title)}"></label><label class="field"><span>Texto</span><textarea rows="4" data-site-content="about.body">${esc(c.about.body)}</textarea></label><label class="field"><span>Diferenciais (um por linha)</span><textarea rows="4" data-site-list="differentials">${esc((c.differentials||[]).join("\n"))}</textarea></label><label class="field"><span>Galeria (uma URL por linha)</span><textarea rows="4" data-site-list="gallery">${esc((c.gallery||[]).join("\n"))}</textarea></label><label class="field"><span>Depoimentos (Autor | Texto)</span><textarea rows="4" data-site-testimonials>${esc((c.testimonials||[]).map((item)=>`${item.author} | ${item.quote}`).join("\n"))}</textarea></label></section>
+    <section class="site-builder-block"><h3>Marca, hero e contato</h3>${siteMediaPicker("logo",c.logoUrl,"Logo da empresa")}${siteMediaPicker("hero",c.hero.imageUrl,"Foto central do hero")}<label class="field"><span>Sobretítulo</span><input data-site-content="hero.eyebrow" value="${esc(c.hero.eyebrow)}"></label><label class="field"><span>Título</span><input data-site-content="hero.title" value="${esc(c.hero.title)}" placeholder="Usa o nome da empresa se vazio"></label><label class="field"><span>Texto</span><textarea rows="3" data-site-content="hero.subtitle">${esc(c.hero.subtitle)}</textarea></label><label class="field"><span>Botão principal</span><input data-site-content="hero.ctaLabel" value="${esc(c.hero.ctaLabel)}"></label><label class="field"><span>Mensagem do WhatsApp</span><textarea rows="3" data-site-content="whatsappMessage">${esc(c.whatsappMessage)}</textarea></label></section>
+    <section class="site-builder-block"><h3>Fotos dos serviços</h3><p class="muted">O card continua normal quando não houver foto.</p><div class="site-service-media-list">${db.services.filter((item)=>item.active).map((service)=>siteMediaPicker(`service:${service.id}`,c.serviceImages?.[service.id],service.name)).join("")||'<div class="empty">Cadastre um serviço para adicionar fotos.</div>'}</div></section>
+    <section class="site-builder-block"><h3>Conteúdo institucional</h3><label class="field"><span>Sobretítulo</span><input data-site-content="about.eyebrow" value="${esc(c.about.eyebrow)}"></label><label class="field"><span>Título</span><input data-site-content="about.title" value="${esc(c.about.title)}"></label><label class="field"><span>Texto</span><textarea rows="4" data-site-content="about.body">${esc(c.about.body)}</textarea></label><label class="field"><span>Diferenciais (um por linha)</span><textarea rows="4" data-site-list="differentials">${esc((c.differentials||[]).join("\n"))}</textarea></label><label class="field"><span>Depoimentos (Autor | Texto)</span><textarea rows="4" data-site-testimonials>${esc((c.testimonials||[]).map((item)=>`${item.author} | ${item.quote}`).join("\n"))}</textarea></label></section>
+    <section class="site-builder-block"><h3>Trabalhos recentes</h3><p class="muted">Estas fotos formam o card quadrado rotativo e o carrossel inferior.</p>${siteMediaPicker("gallery","","Adicionar fotos",true)}<div class="site-gallery-admin">${(c.gallery||[]).map((item,index)=>{const url=typeof item==="string"?item:item?.url;return url?`<figure><img src="${esc(url)}" alt="Foto ${index+1}"><button type="button" title="Remover" data-site-remove-gallery="${index}">×</button></figure>`:"";}).join("")}</div></section>
     <section class="site-builder-block"><h3>Chamada final</h3><label class="field"><span>Sobretítulo</span><input data-site-content="finalCta.eyebrow" value="${esc(c.finalCta.eyebrow)}"></label><label class="field"><span>Título</span><input data-site-content="finalCta.title" value="${esc(c.finalCta.title)}"></label><label class="field"><span>Texto</span><textarea rows="3" data-site-content="finalCta.body">${esc(c.finalCta.body)}</textarea></label><label class="field"><span>Botão</span><input data-site-content="finalCta.label" value="${esc(c.finalCta.label)}"></label></section>
     <section class="site-builder-block"><h3>Seções e ordem</h3><div class="site-section-order">${sectionRows}</div></section>
     <div class="site-builder-actions"><button class="btn btn-outline" data-site-save ${canManageTenant()?"":"disabled"}>Salvar rascunho</button><button class="btn btn-dark" data-site-publish ${canManageTenant()?"":"disabled"}>Publicar alterações</button></div>
@@ -663,7 +677,7 @@ function setSiteContent(path,value){
 }
 function updateSitePreview(){
   const preview=document.querySelector("#site-preview-document");
-  if(preview) preview.innerHTML=ChronaSite.render({shop:siteShop(),services:db.services.filter((item)=>item.active),professionals:PEOPLE.filter((item)=>item.active!==false),config:siteEditorConfig,preview:true});
+  if(preview){preview.innerHTML=ChronaSite.render({shop:siteShop(),services:db.services.filter((item)=>item.active),professionals:PEOPLE.filter((item)=>item.active!==false),config:siteEditorConfig,preview:true});ChronaSite.startRotators();}
 }
 async function persistSiteConfig(publish){
   const normalized=ChronaSite.normalize(siteEditorConfig),now=new Date().toISOString();
@@ -804,6 +818,7 @@ function render() {
   if(PLATFORM_ENTRY) document.title="Chrona | Administração da plataforma";
   app.innerHTML = PASSWORD_FLOW ? passwordPage() : location.hash === "#admin" ? (!authSession ? loginPage() : !adminLoaded ? loadingPage() : currentProfile?.role==="platform_admin" ? (platformSupportMode?adminPage():PLATFORM_ENTRY?platformPage():tenantAdminGuardPage()) : currentSubscription?.status==="suspended" ? suspendedPage() : adminPage()) : CHRONA_HOME ? chronaHomePage() : publicPage();
   bind();
+  ChronaSite.startRotators();
 }
 function bindSiteBuilder(){
   if(adminTab!=="site"||!siteEditorConfig) return;
@@ -815,6 +830,27 @@ function bindSiteBuilder(){
   document.querySelectorAll("[data-site-content]").forEach((field)=>field.addEventListener("input",()=>{setSiteContent(field.dataset.siteContent,field.value);updateSitePreview();}));
   document.querySelectorAll("[data-site-list]").forEach((field)=>field.addEventListener("input",()=>{siteEditorConfig.content[field.dataset.siteList]=field.value.split(/\r?\n/).map((item)=>item.trim()).filter(Boolean);updateSitePreview();}));
   document.querySelector("[data-site-testimonials]")?.addEventListener("input",(event)=>{siteEditorConfig.content.testimonials=event.currentTarget.value.split(/\r?\n/).map((line)=>{const [author,...quote]=line.split("|");return {author:(author||"").trim(),quote:quote.join("|").trim()};}).filter((item)=>item.author&&item.quote);updateSitePreview();});
+  document.querySelectorAll("[data-site-upload]").forEach((input)=>input.addEventListener("change",async()=>{
+    const kind=input.dataset.siteUpload,files=[...(input.files||[])];if(!files.length)return;
+    input.disabled=true;
+    try{
+      if(kind==="gallery"){
+        const remaining=Math.max(0,12-(siteEditorConfig.content.gallery||[]).length);
+        if(!remaining) throw new Error("A galeria já possui o limite de 12 fotos");
+        const urls=[];for(const file of files.slice(0,remaining))urls.push(await uploadSiteJpeg(file,"gallery"));
+        siteEditorConfig.content.gallery=[...(siteEditorConfig.content.gallery||[]),...urls];
+        const gallerySection=siteEditorConfig.sections.find((item)=>item.id==="gallery");if(gallerySection)gallerySection.visible=true;
+      }else{
+        const url=await uploadSiteJpeg(files[0],kind.startsWith("service:")?"services":kind);
+        if(kind==="logo")siteEditorConfig.content.logoUrl=url;
+        else if(kind==="hero"){siteEditorConfig.content.hero.imageUrl=url;siteEditorConfig.variants.hero="centered-image";}
+        else if(kind.startsWith("service:"))siteEditorConfig.content.serviceImages[kind.slice(8)]=url;
+      }
+      render();toast(files.length>1?"Fotos adicionadas ao rascunho":"Foto adicionada ao rascunho");
+    }catch(error){toast(error.message);input.disabled=false;input.value="";}
+  }));
+  document.querySelectorAll("[data-site-clear-media]").forEach((button)=>button.addEventListener("click",()=>{const kind=button.dataset.siteClearMedia;if(kind==="logo")siteEditorConfig.content.logoUrl="";else if(kind==="hero")siteEditorConfig.content.hero.imageUrl="";else if(kind.startsWith("service:"))delete siteEditorConfig.content.serviceImages[kind.slice(8)];render();}));
+  document.querySelectorAll("[data-site-remove-gallery]").forEach((button)=>button.addEventListener("click",()=>{siteEditorConfig.content.gallery.splice(Number(button.dataset.siteRemoveGallery),1);render();}));
   document.querySelectorAll("[data-site-toggle]").forEach((button)=>button.addEventListener("click",()=>{const section=siteEditorConfig.sections.find((item)=>item.id===button.dataset.siteToggle);if(section)section.visible=!section.visible;render();}));
   document.querySelectorAll("[data-site-move]").forEach((button)=>button.addEventListener("click",()=>{const index=siteEditorConfig.sections.findIndex((item)=>item.id===button.dataset.siteMove),target=index+(button.dataset.direction==="up"?-1:1);if(index<0||target<0||target>=siteEditorConfig.sections.length)return;[siteEditorConfig.sections[index],siteEditorConfig.sections[target]]=[siteEditorConfig.sections[target],siteEditorConfig.sections[index]];render();}));
   document.querySelectorAll("[data-site-viewport]").forEach((button)=>button.addEventListener("click",()=>document.querySelector("#site-preview-canvas")?.classList.toggle("mobile",button.dataset.siteViewport==="mobile")));

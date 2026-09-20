@@ -22,6 +22,7 @@ A **PALAZZO STUDIO BARBER** é o primeiro tenant real e a **Nayara Lash Designer
 - Chatbot universal de agendamento replicado por tenant, com estado isolado, fila idempotente, opt-out, fallback e encaminhamento humano.
 - Modo de verificação do Super Admin para acessar qualquer painel com a conta central da Chrona e registro de auditoria.
 - Motor de landing pages multi-tenant com templates Luxury, Clean, Modern e Classic, biblioteca controlada de paletas/fontes/variantes, preview fiel, rascunho e publicação.
+- Upload JPG isolado por tenant para logo, hero, serviços e vitrine rotativa de trabalhos recentes; fotos de serviço e galeria são opcionais.
 
 ## Arquitetura e evolução
 
