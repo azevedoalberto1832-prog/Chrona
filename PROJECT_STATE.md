@@ -31,7 +31,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | Matriz universal de notificações | IMPLEMENTADO | Regras/seeds e geração estão nas migrations; regras dependentes de Meta nascem inativas. |
 | Webhook Meta assinado + tracking de status | IMPLEMENTADO | Edge Function/schema existem. Validação operacional real do callback permanece pendente segundo documentação. |
 | Chatbot universal de agendamento | EM IMPLEMENTAÇÃO | Persistência, estados, outbox, webhook e configuração existem, mas `ARCHITECTURE.md` ainda manda implementar o processador da máquina de estados e ativar piloto. |
-| Hostname dedicado Palazzo no frontend | IMPLEMENTADO | `palazzo-barber.vercel.app` e `palazzo.chronasystem.com.br` resolvem para tenant `palazzo`; publicação HTTPS ainda precisa ser confirmada após o deploy do frontend. |
+| Hostname dedicado Palazzo no frontend | PUBLICADO | `chronasystem.com.br/?tenant=palazzo` e `palazzo.chronasystem.com.br` carregaram o tenant Palazzo após o deploy `96d4219`; título, logo sem recorte e mensagem do WhatsApp foram conferidos nos dois HTTPS. |
 | Biblioteca de templates/landing pages altamente customizáveis | PLANEJADO | Não há contrato/template engine equivalente no estado inspecionado. A direção visual atual é limitada a estilos/direções existentes. |
 | Fontes selecionáveis por cliente | PLANEJADO | Não encontrada implementação configurável por tenant no estado inspecionado. |
 | Subdomínio automático `cliente.chronasystems.com.br` | PLANEJADO | Não encontrada infraestrutura de provisionamento wildcard/subdomínio no repositório atual. |
@@ -42,7 +42,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | --- | --- | --- |
 | Supabase/PostgreSQL/Auth/RLS | IMPLEMENTADO | É a persistência e camada de segurança principal. Projeto configurado em `supabase/config.toml`. |
 | GitHub Pages | IMPLEMENTADO | Workflow publica a raiz em pushes para `main`; esta revisão não usa a mera existência do workflow como prova de deploy atual bem-sucedido. |
-| Palazzo / hostname dedicado | EM IMPLEMENTAÇÃO | Frontend reconhece `palazzo.chronasystem.com.br`; configuração DNS/hosting e paridade HTTPS ainda precisam de confirmação após o deploy. |
+| Palazzo / hostname dedicado | PUBLICADO | GitHub Pages publicou o commit `96d4219`; o domínio principal com query e o subdomínio dedicado responderam com paridade funcional/visual. |
 | n8n | IMPLEMENTADO | Contrato server-side da fila está pronto; execução de worker externo em produção não foi comprovada. |
 | Meta WhatsApp Cloud API v26.0 | EM IMPLEMENTAÇÃO | Código de conexão/envio/webhook existe. Faltam confirmações externas de segredos, callback e templates para operação real. |
 | Supabase Vault para token Meta | IMPLEMENTADO | Arquitetura/migrations/Edge Functions foram desenhadas para guardar somente referência operacional ao segredo. |
@@ -72,7 +72,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 
 ## Última alteração relevante
 
-Em 19/09/2026, a migration `20260919235925_harden_booking_time_and_returning_clients.sql` foi aplicada e registrada no Supabase Chrona. Testes remotos confirmaram fuso Palazzo, ausência de slots passados, rejeição de criação no passado sem resíduo de cliente e reconhecimento de cliente recorrente. O frontend e a direção visual Palazzo passaram por validação local desktop/mobile; publicação HTTPS permanece pendente até o push em `main` e confirmação dos dois endereços.
+Em 19/09/2026, a migration `20260919235925_harden_booking_time_and_returning_clients.sql` foi aplicada e registrada no Supabase Chrona. Testes remotos confirmaram fuso Palazzo, ausência de slots passados, rejeição de criação no passado sem resíduo de cliente e reconhecimento de cliente recorrente. O frontend e a direção visual Palazzo passaram por validação desktop/mobile e foram publicados no commit `96d4219`; ambos os endereços HTTPS foram conferidos com a mesma identidade, logo proporcional e mensagem do WhatsApp.
 
 ## Próximo incremento recomendado
 
