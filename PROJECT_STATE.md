@@ -23,7 +23,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | Área administrativa | IMPLEMENTADO | UI e operações persistentes existem em `app.js`; README lista agenda, clientes, caixa, lembretes, serviços e configurações. |
 | Caixa ligado à conclusão de atendimento | IMPLEMENTADO | Estrutura/RPCs versionadas; preservar idempotência. |
 | Lembrete/retorno por serviço | IMPLEMENTADO | Migrations e arquitetura definem `return_interval_days` e geração de retorno. |
-| Super Admin e gestão de tenants/assinaturas | IMPLEMENTADO | UI, perfis de plataforma, onboarding e controles existem no repositório. |
+| Super Admin e gestão de tenants/assinaturas | IMPLEMENTADO | UI, perfis de plataforma, onboarding e controles existem no repositório. A rota explícita `?platform=chrona&support=<slug>` reaproveita a sessão do Super Admin, mantém RLS e registra a entrada em `platform_support_access_logs`. |
 | Direção visual “Pulso do Tempo” no painel Chrona | PUBLICADO | A plataforma central usa palco escuro preto/vermelho/laranja e superfícies operacionais claras para preservar leitura; o Pages concluiu o deploy do commit `7f9f4c0` e o CSS público foi verificado em `chronasystem.com.br`. |
 | Onboarding de tenant + convite do responsável | IMPLEMENTADO | Edge Function autenticada `tenant-onboarding` e RPCs relacionadas. |
 | Direção visual automática por tenant | IMPLEMENTADO | `visual_direction` e seleção `editorial`/`studio`/`serene` estão no código/migration. Não equivale à biblioteca de templates avançada discutida futuramente. |
@@ -75,6 +75,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 - A autenticação global por WhatsApp OTP permanece desligada: a Meta está conectada para Palazzo, mas não existe template OTP aprovado/configurado nem Auth Hook ativo.
 - O histórico de migrations remoto contém versões/recursos posteriores ausentes no Git (`20260919181325` a `20260919181521`) e timestamps divergentes em migrations de 12/09. As migrations `20260919235925`, `20260920004315` e `20260920012106` foram aplicadas e registradas isoladamente; não reparar nem forçar o restante sem reconciliar a origem dessas versões.
 - README descreve várias capacidades como funcionalidades; agentes devem confirmar cada uma contra código/migrations antes de elevar seu estado para VALIDADO/PUBLICADO.
+- A correção de CORS do onboarding e a rota universal de verificação do Super Admin estão implementadas, mas ainda aguardam validação autenticada após publicação.
 
 ## Última alteração relevante
 

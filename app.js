@@ -2,6 +2,7 @@ const SUPABASE_URL = "https://qcjjqdkjfvnbslbpnrgk.supabase.co";
 const SUPABASE_KEY = "sb_publishable_27mV2bABNSGQYPkGEF-T4g_XBQtb2r7";
 const PAGE_PARAMS = new URLSearchParams(location.search);
 const PLATFORM_ENTRY = PAGE_PARAMS.has("platform");
+const SUPPORT_SLUG = PLATFORM_ENTRY ? PAGE_PARAMS.get("support") : null;
 const PLATFORM_HOSTS = new Set(["chronasystem.com.br","www.chronasystem.com.br"]);
 const HOST_TENANTS = Object.freeze({
   "palazzo-barber.vercel.app": "palazzo",
@@ -17,8 +18,11 @@ const SHOP_SLUG = HOST_TENANT || (PLATFORM_HOSTS.has(CURRENT_HOST) ? null : QUER
 const CHRONA_HOME = !SHOP_SLUG && !PLATFORM_ENTRY;
 const tenantPublicUrl = (slug, hash="") => {
   const canonical=TENANT_PUBLIC_URLS[slug];
-  return canonical ? `${canonical}${String(hash).replace(/^#?/,"#")}`.replace(/#$/g,"") : `${location.pathname}?tenant=${encodeURIComponent(slug)}${hash}`;
+  if(canonical) return `${canonical}${String(hash).replace(/^#?/,"#")}`.replace(/#$/g,"");
+  const base=PLATFORM_HOSTS.has(CURRENT_HOST)?"https://azevedoalberto1832-prog.github.io/Chrona/":location.pathname;
+  return `${base}?tenant=${encodeURIComponent(slug)}${hash}`;
 };
+const tenantSupportUrl = (slug) => `${location.pathname}?platform=chrona&support=${encodeURIComponent(slug)}#admin`;
 if((PLATFORM_HOSTS.has(CURRENT_HOST)&&QUERY_TENANT)||(HOST_TENANT&&PAGE_PARAMS.has("tenant"))){
   PAGE_PARAMS.delete("tenant");
   const cleanQuery=PAGE_PARAMS.toString();
@@ -69,7 +73,12 @@ async function rest(path,{method="GET",body,prefer="return=representation"}={}) 
 }
 async function edge(name,body) {
   if(!authSession?.access_token) throw new Error("Sessão expirada. Entre novamente.");
-  const response=await fetch(`${SUPABASE_URL}/functions/v1/${name}`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${authSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify(body)});
+  let response;
+  try {
+    response=await fetch(`${SUPABASE_URL}/functions/v1/${name}`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${authSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify(body)});
+  } catch {
+    throw new Error("Não foi possível alcançar o servidor da Chrona. Atualize a página e tente novamente.");
+  }
   const data=await response.json().catch(()=>null);
   if(!response.ok) {
     const metaCode=data?.metaCode?` (Meta código ${data.metaCode})`:"";
@@ -450,15 +459,15 @@ async function loadAdminData() {
   const profiles=await rest("profiles?select=id,barbershop_id,name,role,active&auth_user_id=eq."+encodeURIComponent(authSession.user.id));
   currentProfile=profiles?.[0];
   if(!currentProfile?.active) throw new Error("Usuário sem acesso ativo.");
-  if(currentProfile.role==="platform_admin"&&SHOP_SLUG){
-    const shops=await rest(`barbershops?select=*&slug=eq.${encodeURIComponent(SHOP_SLUG)}`);
+  if(currentProfile.role==="platform_admin"&&SUPPORT_SLUG){
+    const shops=await rest(`barbershops?select=*&slug=eq.${encodeURIComponent(SUPPORT_SLUG)}`);
     currentShop=shops?.[0]||null;
     if(!currentShop) throw new Error("Empresa não encontrada para verificação.");
     currentProfile={...currentProfile,barbershop_id:currentShop.id,support_mode:true};
     platformSupportMode=true;
     const supportLogKey=`chrona-support-log:${authSession.user.id}:${currentShop.id}`;
     if(!sessionStorage.getItem(supportLogKey)){
-      await rest("platform_support_access_logs",{method:"POST",body:{barbershop_id:currentShop.id,profile_id:currentProfile.id,auth_user_id:authSession.user.id,context:{tenant_slug:currentShop.slug,entry:"platform_portfolio"}},prefer:"return=minimal"});
+      await rest("platform_support_access_logs",{method:"POST",body:{barbershop_id:currentShop.id,profile_id:currentProfile.id,auth_user_id:authSession.user.id,context:{tenant_slug:currentShop.slug,entry:"platform_support_route"}},prefer:"return=minimal"});
       sessionStorage.setItem(supportLogKey,new Date().toISOString());
     }
   }
@@ -553,7 +562,7 @@ function platformPage(){
   const rows=platformTenants.map((tenant)=>{
     const ready=tenant.users>0&&tenant.services>0&&tenant.professionals>0;
     const missing=[tenant.users?null:"acesso",tenant.services?null:"serviços",tenant.professionals?null:"profissionais"].filter(Boolean).join(", ");
-    return `<tr><td><div class="tenant-cell"><span class="tenant-dot" style="background:${esc(tenant.shop.primary_color||"#6d5dfb")}"></span><span><b>${esc(tenant.shop.name)}</b><br><small class="muted">/${esc(tenant.shop.slug)}</small></span></div></td><td>${esc(tenant.shop.business_type||"services")}</td><td>${esc(tenant.subscription?.plan||"—")}</td><td><span class="badge ${tenant.subscription?.status==="suspended"?"red":"green"}">${esc(tenant.subscription?.status||"—")}</span></td><td><span class="badge ${ready?"green":""}">${ready?"Pronto":`Falta ${esc(missing)}`}</span></td><td>${tenant.appointments}</td><td><div class="row-actions"><a class="btn btn-outline" href="${tenantPublicUrl(tenant.shop.slug,"#admin")}">Verificar painel</a><a class="btn btn-ghost" target="_blank" rel="noopener" href="${tenantPublicUrl(tenant.shop.slug)}">Abrir agenda</a>${tenant.users?"":`<button class="btn btn-outline" data-owner-tenant="${tenant.shop.id}">Convidar responsável</button>`}<button class="btn btn-ghost" data-platform-status="${tenant.shop.id}" data-next-status="${tenant.subscription?.status==="suspended"?"active":"suspended"}">${tenant.subscription?.status==="suspended"?"Ativar":"Suspender"}</button></div></td></tr>`;
+    return `<tr><td><div class="tenant-cell"><span class="tenant-dot" style="background:${esc(tenant.shop.primary_color||"#6d5dfb")}"></span><span><b>${esc(tenant.shop.name)}</b><br><small class="muted">/${esc(tenant.shop.slug)}</small></span></div></td><td>${esc(tenant.shop.business_type||"services")}</td><td>${esc(tenant.subscription?.plan||"—")}</td><td><span class="badge ${tenant.subscription?.status==="suspended"?"red":"green"}">${esc(tenant.subscription?.status||"—")}</span></td><td><span class="badge ${ready?"green":""}">${ready?"Pronto":`Falta ${esc(missing)}`}</span></td><td>${tenant.appointments}</td><td><div class="row-actions"><a class="btn btn-outline" href="${tenantSupportUrl(tenant.shop.slug)}">Verificar painel</a><a class="btn btn-ghost" target="_blank" rel="noopener" href="${tenantPublicUrl(tenant.shop.slug)}">Abrir agenda</a>${tenant.users?"":`<button class="btn btn-outline" data-owner-tenant="${tenant.shop.id}">Convidar responsável</button>`}<button class="btn btn-ghost" data-platform-status="${tenant.shop.id}" data-next-status="${tenant.subscription?.status==="suspended"?"active":"suspended"}">${tenant.subscription?.status==="suspended"?"Ativar":"Suspender"}</button></div></td></tr>`;
   }).join("");
   return `<div class="admin chrona-platform"><main class="admin-main platform-main">
     <header class="admin-header platform-header"><div><div class="chrona-wordmark compact"><span>C</span> CHRONA</div><p class="muted">Controle central da operação multi-tenant</p></div><div class="header-actions"><button class="btn btn-outline" data-logout>Sair</button><button class="btn btn-dark" data-new-tenant>+ Nova empresa</button></div></header>
@@ -964,7 +973,7 @@ function bind() {
     location.hash = "admin";
   });
   document.querySelector("[data-public]")?.addEventListener("click", () => {
-    location.href = PLATFORM_ENTRY ? location.pathname : tenantPublicUrl(currentShop?.slug||SHOP_SLUG);
+    location.href = platformSupportMode ? tenantPublicUrl(currentShop.slug) : PLATFORM_ENTRY ? location.pathname : tenantPublicUrl(currentShop?.slug||SHOP_SLUG);
   });
   document.querySelectorAll("[data-tab]").forEach(
     (x) =>

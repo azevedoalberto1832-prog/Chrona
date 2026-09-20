@@ -5,8 +5,11 @@ const CHRONA_SITE_URL = (Deno.env.get("CHRONA_SITE_URL") ??
   "https://azevedoalberto1832-prog.github.io/Chrona/").replace(/\/+$/, "/");
 const ALLOWED_ORIGINS = new Set([
   "https://azevedoalberto1832-prog.github.io",
+  "https://chronasystem.com.br",
+  "https://www.chronasystem.com.br",
   "http://127.0.0.1:5500",
   "http://localhost:5500",
+  "null",
 ]);
 
 function responseHeaders(request: Request) {
