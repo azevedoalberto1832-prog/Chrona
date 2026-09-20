@@ -9,19 +9,21 @@ const HOST_TENANTS = Object.freeze({
   "palazzo-barber.vercel.app": "palazzo",
   "palazzo.chronasystem.com.br": "palazzo",
 });
+const ACTIVE_TENANT_SUBDOMAINS = new Set(["palazzo"]);
 const CURRENT_HOST = location.hostname.toLowerCase();
 const SUBDOMAIN_TENANT = CURRENT_HOST.endsWith(`.${ROOT_DOMAIN}`) ? CURRENT_HOST.slice(0,-(`.${ROOT_DOMAIN}`).length) : null;
 const HOST_TENANT = HOST_TENANTS[CURRENT_HOST] || (SUBDOMAIN_TENANT && SUBDOMAIN_TENANT!=="www" ? SUBDOMAIN_TENANT : null);
 const QUERY_TENANT = PAGE_PARAMS.get("tenant");
-const SHOP_SLUG = HOST_TENANT || (PLATFORM_HOSTS.has(CURRENT_HOST) ? null : QUERY_TENANT) || null;
+const SHOP_SLUG = HOST_TENANT || (!PLATFORM_ENTRY ? QUERY_TENANT : null) || null;
 const CHRONA_HOME = !SHOP_SLUG && !PLATFORM_ENTRY;
 const tenantPublicUrl = (slug, hash="") => {
   const suffix=String(hash).replace(/^#?/,"#").replace(/^#$/,"");
   if(["file:","http:"].includes(location.protocol) && ["","localhost","127.0.0.1"].includes(CURRENT_HOST)) return `${location.pathname}?tenant=${encodeURIComponent(slug)}${suffix}`;
-  return `https://${encodeURIComponent(slug)}.${ROOT_DOMAIN}/${suffix}`;
+  if(ACTIVE_TENANT_SUBDOMAINS.has(slug)) return `https://${encodeURIComponent(slug)}.${ROOT_DOMAIN}/${suffix}`;
+  return `https://${ROOT_DOMAIN}/?tenant=${encodeURIComponent(slug)}${suffix}`;
 };
 const tenantSupportUrl = (slug) => `${location.pathname}?platform=chrona&support=${encodeURIComponent(slug)}#admin`;
-if((PLATFORM_HOSTS.has(CURRENT_HOST)&&QUERY_TENANT)||(HOST_TENANT&&PAGE_PARAMS.has("tenant"))){
+if((PLATFORM_ENTRY&&QUERY_TENANT)||(HOST_TENANT&&PAGE_PARAMS.has("tenant"))){
   PAGE_PARAMS.delete("tenant");
   const cleanQuery=PAGE_PARAMS.toString();
   history.replaceState(null,"",`${location.pathname}${cleanQuery?`?${cleanQuery}`:""}${location.hash}`);
