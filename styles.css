@@ -1060,6 +1060,96 @@ body[data-direction="studio"] .nav button { color:var(--muted); }
 body[data-direction="studio"] .nav button.active,
 body[data-direction="studio"] .nav button:hover { color:var(--brand-ink); background:color-mix(in srgb,var(--brand-primary) 10%,#fff); }
 body[data-direction="studio"] .mobile-nav { background:#fff; }
+
+/* Palazzo — barbearia editorial em preto, marfim e ouro envelhecido. */
+body[data-tenant="palazzo"] {
+  --ink:#f3ead9;
+  --ink2:#d6ae68;
+  --paper:#090908;
+  --card:#12110f;
+  --line:#3a3022;
+  --copper:#c99a4f;
+  --copper2:#e1bd7a;
+  --muted:#b7ad9d;
+  --shadow:0 24px 70px rgba(0,0,0,.52);
+  --r:2px;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"DM Sans",sans-serif;
+}
+body[data-tenant="palazzo"] h1,
+body[data-tenant="palazzo"] h2,
+body[data-tenant="palazzo"] h3 { font-family:"Cormorant Garamond",serif; font-weight:600; }
+body[data-tenant="palazzo"] .topbar { background:rgba(9,9,8,.94); border-color:var(--line); }
+body[data-tenant="palazzo"] .brand { letter-spacing:.035em; }
+body[data-tenant="palazzo"] .brand-logo {
+  width:54px;
+  height:54px;
+  padding:3px;
+  object-fit:contain;
+  border:1px solid #5b472b;
+  border-radius:0;
+  background:#080807;
+}
+body[data-tenant="palazzo"] .hero {
+  padding:104px 0 88px;
+  background:
+    linear-gradient(90deg,transparent 0 49.9%,rgba(201,154,79,.12) 50%,transparent 50.1%),
+    radial-gradient(circle at 78% 42%,rgba(201,154,79,.13),transparent 29%),
+    #090908;
+  border-bottom:1px solid var(--line);
+}
+body[data-tenant="palazzo"] .hero-grid { grid-template-columns:minmax(0,1fr) minmax(320px,.72fr); gap:clamp(42px,8vw,110px); }
+body[data-tenant="palazzo"] .hero h1 { max-width:720px; font-size:clamp(58px,8vw,98px); line-height:.88; letter-spacing:-.035em; }
+body[data-tenant="palazzo"] .hero-logo {
+  width:min(470px,100%);
+  aspect-ratio:1;
+  object-fit:contain;
+  border:1px solid #4b3b27;
+  border-radius:0;
+  background:#080807;
+  box-shadow:22px 22px 0 #17130e;
+}
+body[data-tenant="palazzo"] .eyebrow,
+body[data-tenant="palazzo"] .service-card .price { color:#e1bd7a; }
+body[data-tenant="palazzo"] .btn { border-radius:0; letter-spacing:.035em; }
+body[data-tenant="palazzo"] .btn-dark,
+body[data-tenant="palazzo"] .btn-copper,
+body[data-tenant="palazzo"] .slot-btn.active { background:#c99a4f; color:#120f0a; }
+body[data-tenant="palazzo"] .service-grid { gap:22px; align-items:stretch; }
+body[data-tenant="palazzo"] .service-card {
+  display:flex;
+  min-height:300px;
+  flex-direction:column;
+  padding:30px;
+  border-radius:0;
+  border-color:var(--line);
+  border-top:2px solid #c99a4f;
+  background:linear-gradient(145deg,#15130f,#0e0d0b);
+  box-shadow:none;
+}
+body[data-tenant="palazzo"] .service-card h3 { line-height:1; }
+body[data-tenant="palazzo"] .service-card p { line-height:1.65; }
+body[data-tenant="palazzo"] .service-card .btn { margin-top:auto; }
+body[data-tenant="palazzo"] .service-card:nth-child(3n+2) { transform:translateY(18px); border-bottom:1px solid var(--line); }
+body[data-tenant="palazzo"] .service-card:hover { transform:translateY(-5px); border-color:#c99a4f; box-shadow:0 20px 50px rgba(0,0,0,.32); }
+body[data-tenant="palazzo"] .service-card:nth-child(3n+2):hover { transform:translateY(13px); }
+body[data-tenant="palazzo"] .location { border-radius:0; border:1px solid var(--line); background:#12100d; }
+body[data-tenant="palazzo"] .modal-card,
+body[data-tenant="palazzo"] .modal-head,
+body[data-tenant="palazzo"] .summary,
+body[data-tenant="palazzo"] .field input,
+body[data-tenant="palazzo"] .field select,
+body[data-tenant="palazzo"] .field textarea { background:#12110f; color:var(--ink); }
+
+@media (max-width: 760px) {
+  body[data-tenant="palazzo"] .hero { padding:68px 0 58px; background:radial-gradient(circle at 50% 78%,rgba(201,154,79,.12),transparent 31%),#090908; }
+  body[data-tenant="palazzo"] .hero-grid { grid-template-columns:1fr; gap:42px; }
+  body[data-tenant="palazzo"] .hero-logo { width:100%; max-width:430px; justify-self:center; box-shadow:12px 12px 0 #17130e; }
+  body[data-tenant="palazzo"] .service-card,
+  body[data-tenant="palazzo"] .service-card:nth-child(3n+2) { min-height:0; transform:none; }
+  body[data-tenant="palazzo"] .brand-logo { width:46px; height:46px; }
+}
 .setup-note { display:inline-flex; margin-top:22px!important; padding:10px 13px; border:1px solid var(--line); border-radius:12px; font-size:13px!important; }
 .empty-state { padding:48px 24px; text-align:center; border:1px dashed var(--line); border-radius:20px; color:var(--muted); background:color-mix(in srgb,var(--card) 84%,transparent); }
 .empty-state h3 { color:var(--ink); margin:10px 0 6px; }

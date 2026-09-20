@@ -4,6 +4,7 @@ const PAGE_PARAMS = new URLSearchParams(location.search);
 const PLATFORM_ENTRY = PAGE_PARAMS.has("platform");
 const HOST_TENANTS = Object.freeze({
   "palazzo-barber.vercel.app": "palazzo",
+  "palazzo.chronasystem.com.br": "palazzo",
 });
 const SHOP_SLUG = PAGE_PARAMS.get("tenant") || HOST_TENANTS[location.hostname.toLowerCase()] || null;
 const CHRONA_HOME = !SHOP_SLUG && !PLATFORM_ENTRY;
@@ -60,11 +61,22 @@ async function edge(name,body) {
   return data;
 }
 let PEOPLE = [];
-const today = () => new Date().toISOString().slice(0, 10),
+const tenantDateParts = (date = new Date()) => Object.fromEntries(
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: db.settings.timezone || "America/Sao_Paulo",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(date).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]),
+),
+  today = () => {
+    const parts = tenantDateParts();
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  },
   uid = () => crypto.randomUUID?.() || Date.now() + Math.random() + "";
 const addDays = (n) => {
-  let d = new Date();
-  d.setDate(d.getDate() + n);
+  const parts = tenantDateParts();
+  const d = new Date(`${parts.year}-${parts.month}-${parts.day}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };
 const seed = {
@@ -90,6 +102,7 @@ const seed = {
     primaryColor: "#6d5dfb",
     secondaryColor: "#22c3a6",
     visualDirection: "studio",
+    timezone: "America/Sao_Paulo",
   },
 };
 let db = structuredClone(seed);
@@ -120,6 +133,19 @@ let whatsappConnectionDraft={businessAccountId:"",phoneNumberId:"",accessToken:"
 let crmPipelines=[],crmStages=[],crmOpportunities=[],activePipelineId="";
 const save = () => {};
 let remoteSlots = [], slotProfessionals = {}, slotsLoaded = false;
+const BOOKING_PROFILE_KEY = () => `chrona-booking-profile:${SHOP_SLUG || "default"}`;
+const readBookingProfile = () => {
+  try { return JSON.parse(localStorage.getItem(BOOKING_PROFILE_KEY()) || "null"); }
+  catch { return null; }
+};
+const saveBookingProfile = () => {
+  if (!booking.adminMode) localStorage.setItem(BOOKING_PROFILE_KEY(), JSON.stringify({ name:booking.name, phone:booking.phone, birth:booking.birth || "" }));
+};
+const isPastSlot = (date, time) => {
+  const now = tenantDateParts();
+  const currentDate = `${now.year}-${now.month}-${now.day}`;
+  return date < currentDate || (date === currentDate && time <= `${now.hour}:${now.minute}`);
+};
 const money = (v) =>
   Number(v||0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const dateBR = (d) => d ? new Date(d + "T12:00").toLocaleDateString("pt-BR") : "—";
@@ -344,7 +370,7 @@ async function loadPublicData() {
     const shop = payload.shop;
     db.services = (payload.services || []).map((s) => ({ id:s.id, name:s.name, desc:s.description, duration:s.duration_minutes, price:Number(s.price), returnDays:s.return_interval_days, active:s.active }));
     PEOPLE = (payload.professionals || []).map((p) => ({ id:p.id, name:p.name }));
-    db.settings = { shop:shop.name, address:shop.address || "Endereço a confirmar", phone:shop.phone || "", open:shop.opening_time?.slice(0,5) || "09:00", close:shop.closing_time?.slice(0,5) || "19:00", breakStart:shop.break_start?.slice(0,5) || "", breakEnd:shop.break_end?.slice(0,5) || "", greeting:shop.whatsapp_message || "Olá! Agende seu horário pela Chrona.", instagram:shop.instagram || "", logo:shop.logo_url || "", description:shop.public_description || "Escolha o serviço, o profissional e o melhor horário para você.", primaryColor:shop.primary_color || "#6d5dfb", secondaryColor:shop.secondary_color || "#22c3a6", visualDirection:shop.visual_direction || "studio" };
+    db.settings = { shop:shop.name, address:shop.address || "Endereço a confirmar", phone:shop.phone || "", open:shop.opening_time?.slice(0,5) || "09:00", close:shop.closing_time?.slice(0,5) || "19:00", breakStart:shop.break_start?.slice(0,5) || "", breakEnd:shop.break_end?.slice(0,5) || "", greeting:shop.whatsapp_message || "Olá! Agende seu horário pela Chrona.", instagram:shop.instagram || "", logo:shop.logo_url || "", description:shop.public_description || "Escolha o serviço, o profissional e o melhor horário para você.", primaryColor:shop.primary_color || "#6d5dfb", secondaryColor:shop.secondary_color || "#22c3a6", visualDirection:shop.visual_direction || "studio", timezone:shop.timezone || "America/Sao_Paulo" };
     applyTenantBrand(shop);
     document.title = `${shop.name} | Agendamento`;
     render();
@@ -356,7 +382,7 @@ async function loadAvailableSlots() {
   remoteSlots=[]; slotProfessionals={}; slotsLoaded=false;
   const people = (booking.professional === "any" ? PEOPLE : PEOPLE.filter((p)=>p.id===booking.professional)).filter(p=>p.active!==false);
   const results = await Promise.all(people.map(async (p) => ({ p, slots: await rpc("get_available_slots", { shop_slug:SHOP_SLUG, professional:p.id, service_ids:booking.serviceIds, appt_date:booking.date }) })));
-  results.forEach(({p,slots}) => (slots || []).forEach((row) => { const value=String(row.slot).slice(0,5); slotProfessionals[value] ||= p.id; }));
+  results.forEach(({p,slots}) => (slots || []).forEach((row) => { const value=String(row.slot).slice(0,5); if(!isPastSlot(booking.date,value)) slotProfessionals[value] ||= p.id; }));
   remoteSlots=Object.keys(slotProfessionals).sort();
   slotsLoaded=true;
 }
@@ -368,7 +394,8 @@ function publicPage() {
   const social=handle?`<a class="btn btn-outline" target="_blank" rel="noopener" href="https://www.instagram.com/${encodeURIComponent(handle)}/">${esc(db.settings.instagram)}</a>`:"";
   const logo=db.settings.logo?`<img class="brand-logo" src="${esc(db.settings.logo)}" alt="Logo ${shopName}">`:`<span class="brand-logo logo-fallback">${initials(db.settings.shop)}</span>`;
   const heroLogo=db.settings.logo?`<img class="hero-logo" src="${esc(db.settings.logo)}" alt="${shopName}">`:`<div class="hero-logo hero-monogram">${initials(db.settings.shop)}</div>`;
-  const whatsapp=`https://wa.me/${String(db.settings.phone||"").replace(/\D/g,"")}?text=${encodeURIComponent(db.settings.greeting||"")}`;
+  const whatsappMessage="Olá! Vim pelo site da Palazzo e gostaria de mais informações.";
+  const whatsapp=`https://wa.me/${String(db.settings.phone||"").replace(/\D/g,"")}?text=${encodeURIComponent(whatsappMessage)}`;
   const bookingButton=(label,extra="")=>`<button class="btn btn-copper" data-book ${extra} ${canBook?"":"disabled"}>${label}</button>`;
   const services=activeServices.length?activeServices.map((service)=>`<article class="service-card"><div class="service-meta"><span class="eyebrow">${Number(service.duration)} MIN</span><span class="price">${money(service.price)}</span></div><h3 style="font-size:27px;margin:25px 0 10px">${esc(service.name)}</h3><p class="muted">${esc(service.desc||"Atendimento personalizado.")}</p><button class="btn btn-outline" data-book data-service="${esc(service.id)}">Agendar este serviço</button></article>`).join(""):`<div class="empty-state full-span"><span class="empty-icon">✦</span><h3>Agenda em preparação</h3><p>Os serviços desta empresa ainda estão sendo configurados.</p></div>`;
   return `<header class="topbar"><div class="container"><div class="brand">${logo}<div>${shopName}<small>AGENDA POR CHRONA</small></div></div><div class="desktop-actions">${social}<a class="btn btn-outline" target="_blank" rel="noopener" href="${whatsapp}">WhatsApp</a>${bookingButton("Agendar horário")}</div></div></header><main><section class="hero"><div class="container hero-grid"><div><div class="eyebrow">Agendamento online</div><h1>${shopName}</h1><p>${esc(db.settings.description||"Escolha o serviço, o profissional e o melhor horário para você.")}</p><div class="hero-actions">${bookingButton("Escolher um horário →")}${social}<a class="btn btn-outline" target="_blank" rel="noopener" href="${whatsapp}">Falar no WhatsApp</a></div>${canBook?"":'<p class="setup-note">A agenda ficará disponível assim que os serviços e profissionais forem publicados.</p>'}</div>${heroLogo}</div></section><section class="section" id="servicos"><div class="container"><div class="section-head"><div><div class="eyebrow">Serviços</div><h2>Escolha o seu atendimento</h2></div><p class="muted">Informações atualizadas diretamente pela empresa.</p></div><div class="service-grid">${services}</div></div></section><section class="section"><div class="container"><div class="location"><div><div class="eyebrow">Onde encontrar</div><h2 style="font-size:38px;margin:8px 0">${shopName}</h2><p>${esc(db.settings.address)}</p></div><div>${bookingButton("Agendar horário")} <a class="btn btn-outline" target="_blank" rel="noopener" href="https://maps.google.com/?q=${encodeURIComponent(db.settings.address)}">Abrir no mapa</a></div></div></div></section></main><footer class="footer"><div class="container"><span>© ${shopName}</span><div>${social}<button class="btn btn-outline" data-admin>Área da empresa</button></div></div></footer>`;
@@ -450,7 +477,7 @@ async function loadAdminData() {
   personalReminders=personalRows||[];
   if(!crmPipelines.some((pipeline)=>pipeline.id===activePipelineId)) activePipelineId=crmPipelines.find((pipeline)=>pipeline.active)?.id||crmPipelines[0]?.id||"";
   if(currentShop){
-    db.settings={shop:currentShop.name,address:currentShop.address||"",phone:currentShop.phone||"",open:currentShop.opening_time?.slice(0,5)||"09:00",close:currentShop.closing_time?.slice(0,5)||"19:00",breakStart:currentShop.break_start?.slice(0,5)||"",breakEnd:currentShop.break_end?.slice(0,5)||"",greeting:currentShop.whatsapp_message||"",instagram:currentShop.instagram||"",logo:currentShop.logo_url||"",description:currentShop.public_description||"",primaryColor:currentShop.primary_color||"#6d5dfb",secondaryColor:currentShop.secondary_color||"#22c3a6",visualDirection:currentShop.visual_direction||"studio"};
+    db.settings={shop:currentShop.name,address:currentShop.address||"",phone:currentShop.phone||"",open:currentShop.opening_time?.slice(0,5)||"09:00",close:currentShop.closing_time?.slice(0,5)||"19:00",breakStart:currentShop.break_start?.slice(0,5)||"",breakEnd:currentShop.break_end?.slice(0,5)||"",greeting:currentShop.whatsapp_message||"",instagram:currentShop.instagram||"",logo:currentShop.logo_url||"",description:currentShop.public_description||"",primaryColor:currentShop.primary_color||"#6d5dfb",secondaryColor:currentShop.secondary_color||"#22c3a6",visualDirection:currentShop.visual_direction||"studio",timezone:currentShop.timezone||"America/Sao_Paulo"};
     applyTenantBrand(currentShop);
   }
   adminLoaded=true;
@@ -532,7 +559,7 @@ function showOnboardingSuccess(result){
   document.querySelector("[data-success-close]").onclick=()=>document.querySelector("#onboarding-success")?.remove();
 }
 function availableSlots() {
-  if (slotsLoaded) return remoteSlots;
+  if (slotsLoaded) return remoteSlots.filter((time) => !isPastSlot(booking.date,time));
   let dur = total().duration || 30,
     out = [];
   for (let h = 9 * 60; h + dur <= 19 * 60; h += 15) {
@@ -555,7 +582,7 @@ function availableSlots() {
         ? freePeople.length
         : freePeople.some((p) => p.id === booking.professional)
     )
-      out.push(time);
+      if (!isPastSlot(booking.date,time)) out.push(time);
   }
   return out;
 }
@@ -570,7 +597,7 @@ function bookingModal() {
     ];
   let body = "";
   if (booking.step === 0)
-    body = `<div>${booking.adminMode ? `<div class="field" style="margin-bottom:22px"><span>Selecionar cliente cadastrado</span><div style="display:flex;gap:10px"><select id="admin-client" style="flex:1"><option value="">Escolha pelo nome ou WhatsApp</option>${db.clients.map((c) => `<option value="${c.id}" ${booking.clientId === c.id ? "selected" : ""}>${c.name} · ${c.phone}</option>`).join("")}</select><button class="btn btn-dark" type="button" data-use-client>Usar cliente</button></div></div><div class="eyebrow" style="margin:20px 0">OU CADASTRAR NOVO</div>` : '<p class="muted" style="margin-top:0">Informe seu WhatsApp. O sistema atualiza o mesmo cadastro nas próximas visitas, evitando duplicidade.</p>'}<div class="form-grid"><label class="field"><span>WhatsApp *</span><input id="book-phone" inputmode="tel" value="${booking.phone}" placeholder="(62) 99999-9999"></label><div class="field"><span>&nbsp;</span><button class="btn btn-outline" type="button" data-find-client>Continuar</button></div>${booking.lookupDone ? (booking.clientId ? `<div class="field full"><div class="summary"><span>Bem-vindo novamente, <b>${booking.name}</b></span><span class="badge green">Cadastro encontrado</span></div></div>` : `<label class="field"><span>Nome completo *</span><input id="book-name" value="${booking.name}" placeholder="Seu nome"></label><label class="field"><span>Data de nascimento</span><input id="book-birth" type="date" value="${booking.birth || ""}"></label>`) : ""}<label class="field full"><span>Observações</span><input id="book-notes" value="${booking.notes}" placeholder="Opcional"></label><label class="field full"><span><input id="book-optin" type="checkbox" ${booking.optIn ? "checked" : ""}> Aceito receber lembretes e comunicações do estabelecimento pelo WhatsApp.</span></label></div></div>`;
+    body = `<div>${booking.adminMode ? `<div class="field" style="margin-bottom:22px"><span>Selecionar cliente cadastrado</span><div style="display:flex;gap:10px"><select id="admin-client" style="flex:1"><option value="">Escolha pelo nome ou WhatsApp</option>${db.clients.map((c) => `<option value="${c.id}" ${booking.clientId === c.id ? "selected" : ""}>${c.name} · ${c.phone}</option>`).join("")}</select><button class="btn btn-dark" type="button" data-use-client>Usar cliente</button></div></div><div class="eyebrow" style="margin:20px 0">OU CADASTRAR NOVO</div>` : '<p class="muted" style="margin-top:0">Informe seu WhatsApp. Nas próximas visitas, seu cadastro será reconhecido sem criar duplicatas.</p>'}<div class="form-grid"><label class="field"><span>WhatsApp *</span><input id="book-phone" inputmode="tel" autocomplete="tel" value="${booking.phone}" placeholder="(62) 99999-9999"></label><div class="field"><span>&nbsp;</span><button class="btn btn-outline" type="button" data-find-client>Continuar</button></div>${booking.lookupDone ? (booking.clientId ? `<div class="field full"><div class="summary"><span>Bem-vindo novamente, <b>${esc(booking.name)}</b></span><span class="badge green">Cadastro encontrado</span></div></div>` : `<label class="field"><span>Nome completo *</span><input id="book-name" autocomplete="name" value="${esc(booking.name)}" placeholder="Seu nome"></label><label class="field"><span>Data de nascimento</span><input id="book-birth" type="date" value="${booking.birth || ""}"></label>`) : ""}<label class="field full"><span>Observações</span><input id="book-notes" value="${esc(booking.notes)}" placeholder="Opcional"></label><label class="field full"><span><input id="book-optin" type="checkbox" ${booking.optIn ? "checked" : ""}> Aceito receber lembretes e comunicações do estabelecimento pelo WhatsApp.</span></label></div></div>`;
   if (booking.step === 1)
     body = `<div class="choice-grid">${db.services
       .filter((s) => s.active)
@@ -763,18 +790,19 @@ function bind() {
   document.querySelectorAll("[data-book]").forEach(
     (b) =>
       (b.onclick = () => {
+        const saved = readBookingProfile();
         booking = {
           step: 0,
           serviceIds: b.dataset.service ? [b.dataset.service] : [],
           professional: "any",
           date: addDays(1),
           time: "",
-          name: "",
-          phone: "",
-          birth: "",
+          name: saved?.name || "",
+          phone: saved?.phone || "",
+          birth: saved?.birth || "",
           notes: "",
-          clientId: "",
-          lookupDone: false,
+          clientId: saved?.phone ? "local" : "",
+          lookupDone: Boolean(saved?.phone && saved?.name),
           adminMode: false,
           optIn: false,
         };
@@ -998,10 +1026,21 @@ function bind() {
 function bindBooking() {
   let modal = document.querySelector("#booking-modal");
   modal.querySelector("[data-close]").onclick = () => modal.remove();
-  modal.querySelector("[data-find-client]")?.addEventListener("click", () => {
+  modal.querySelector("#book-phone")?.addEventListener("input", (event) => {
+    const phone = event.target.value.replace(/\D/g, "");
+    if (phone !== booking.phone) { booking.lookupDone=false; booking.clientId=""; }
+  });
+  modal.querySelector("[data-find-client]")?.addEventListener("click", async () => {
     const phone = modal.querySelector("#book-phone").value.replace(/\D/g, "");
     if (phone.length < 10) return toast("Digite um WhatsApp válido");
-    const found = db.clients.find((c) => c.phone.replace(/\D/g, "") === phone);
+    const localFound = db.clients.find((c) => c.phone.replace(/\D/g, "") === phone);
+    let found = localFound;
+    if (!found && !booking.adminMode) {
+      try {
+        const result = await rpc("get_returning_client", { shop_slug:SHOP_SLUG, client_phone:phone });
+        if (result?.found) found = { id:"returning", name:result.name, phone };
+      } catch (error) { return toast(error.message); }
+    }
     booking.phone = phone;
     booking.lookupDone = true;
     booking.clientId = found?.id || "";
@@ -1053,6 +1092,12 @@ function bindBooking() {
       }),
   );
   modal.querySelector("#book-date")?.addEventListener("change", async (e) => {
+    if (e.target.value < today()) {
+      booking.date = today();
+      booking.time = "";
+      refreshModal();
+      return toast("Escolha hoje ou uma data futura");
+    }
     booking.date = e.target.value;
     booking.time = "";
     await loadAvailableSlots().catch((error) => toast(error.message));
@@ -1087,11 +1132,12 @@ function bindBooking() {
       try { await loadAvailableSlots(); }
       catch (error) { return toast(error.message); }
     }
-    if (booking.step === 3 && !booking.time) return toast("Escolha um horário");
+    if (booking.step === 3 && (!booking.time || isPastSlot(booking.date,booking.time))) return toast("Escolha um horário futuro");
     if (booking.step === 3) {
       const prof = booking.professional === "any" ? slotProfessionals[booking.time] : booking.professional;
       try {
         await rpc("create_public_appointment", { shop_slug:SHOP_SLUG, client_name:booking.name, client_phone:booking.phone, client_birth:booking.birth || null, opt_in:booking.optIn, professional:prof, service_ids:booking.serviceIds, appt_date:booking.date, appt_start:booking.time, appt_notes:booking.notes || null });
+        saveBookingProfile();
         if(booking.adminMode) await loadAdminData();
       } catch (error) {
         await loadAvailableSlots().catch(() => {});
