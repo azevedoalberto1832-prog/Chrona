@@ -27,7 +27,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | Direção visual “Pulso do Tempo” no painel Chrona | PUBLICADO | A plataforma central usa palco escuro preto/vermelho/laranja e superfícies operacionais claras para preservar leitura; o Pages concluiu o deploy do commit `7f9f4c0` e o CSS público foi verificado em `chronasystem.com.br`. |
 | Onboarding de tenant + convite do responsável | IMPLEMENTADO | Edge Function autenticada `tenant-onboarding` e RPCs relacionadas. |
 | Direção visual automática por tenant | IMPLEMENTADO | `visual_direction` e seleção `editorial`/`studio`/`serene` estão no código/migration. Não equivale à biblioteca de templates avançada discutida futuramente. |
-| Contraste do painel em modo de suporte | IMPLEMENTADO | Ao entrar em um tenant, o documento assume a identidade visual desse tenant em vez de manter os tokens da Chrona; campos claros das direções Serene e Studio têm cor, placeholder, caret e autofill explicitamente legíveis. |
+| Contraste do painel em modo de suporte | PUBLICADO | Ao entrar em um tenant, o documento assume a identidade visual desse tenant em vez de manter os tokens da Chrona; o deploy `b5366c6` foi validado na Nayara com texto `#3d3233` sobre campos brancos e fundo rosado Serene. |
 | CRM com pipelines/etapas/oportunidades | IMPLEMENTADO | Schema e CRUD constam do código/documentação. |
 | Fila de automações para n8n | IMPLEMENTADO | Edge Function, lease, deduplicação e protocolo documentados. Operação externa contínua não foi comprovada nesta revisão. |
 | Conexão Meta Cloud API por tenant | IMPLEMENTADO | Edge Function e schema existem; token é tratado server-side/Vault. Conexão real de cada tenant não foi comprovada nesta revisão. |
@@ -80,7 +80,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 
 ## Última alteração relevante
 
-Em 20/09/2026, foi corrigida no código a colisão entre os tokens visuais da Chrona e a identidade do tenant durante o modo de suporte; a publicação e a validação visual ainda precisam ser confirmadas. O envio OTP permanece deliberadamente inativo até a aprovação/configuração do template Meta.
+Em 20/09/2026, o deploy `b5366c6` corrigiu a colisão entre os tokens visuais da Chrona e a identidade do tenant durante o modo de suporte. A tela de configurações da Nayara foi conferida em produção com identidade Serene e contraste legível. O envio OTP permanece deliberadamente inativo até a aprovação/configuração do template Meta.
 
 ## Próximo incremento recomendado
 
