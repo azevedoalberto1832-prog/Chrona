@@ -32,8 +32,9 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | Webhook Meta assinado + tracking de status | IMPLEMENTADO | Edge Function/schema existem. Validação operacional real do callback permanece pendente segundo documentação. |
 | Chatbot universal de agendamento | EM IMPLEMENTAÇÃO | Persistência, estados, outbox, webhook e configuração existem, mas `ARCHITECTURE.md` ainda manda implementar o processador da máquina de estados e ativar piloto. |
 | Hostname dedicado Palazzo no frontend | PUBLICADO | `chronasystem.com.br/?tenant=palazzo` e `palazzo.chronasystem.com.br` carregaram o tenant Palazzo após o deploy `96d4219`; título, logo sem recorte e mensagem do WhatsApp foram conferidos nos dois HTTPS. |
-| Biblioteca de templates/landing pages altamente customizáveis | PLANEJADO | Não há contrato/template engine equivalente no estado inspecionado. A direção visual atual é limitada a estilos/direções existentes. |
-| Fontes selecionáveis por cliente | PLANEJADO | Não encontrada implementação configurável por tenant no estado inspecionado. |
+| Biblioteca controlada de landing pages | VALIDADO | Renderer único em `site-engine.js`, quatro templates, oito paletas, cinco pares tipográficos, variantes allowlisted, seções ordenáveis/ocultáveis e preview do Admin. Palazzo usa Luxury e Nayara usa Clean por dados, sem fork por tenant. |
+| Rascunho e publicação do site | VALIDADO | `tenant_site_configs` mantém `draft_config` e `published_config`; leitura pública expõe somente o publicado. RLS permite leitura ao membro e escrita somente a owner/platform admin. |
+| Fontes selecionáveis por cliente | IMPLEMENTADO | Cinco pares curados são selecionáveis no editor; não há CSS arbitrário nem upload de fontes externas. |
 | Subdomínio automático `cliente.chronasystems.com.br` | PLANEJADO | Não encontrada infraestrutura de provisionamento wildcard/subdomínio no repositório atual. |
 
 ## Integrações
@@ -67,22 +68,22 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 - O estado externo da Meta não é demonstrável apenas pelo repositório. Segredos, webhook real e templates aprovados precisam ser verificados no ambiente antes de marcar integração como VALIDADA.
 - O processador completo da máquina de estados do chatbot ainda aparece como próximo passo na arquitetura.
 - O mapeamento dos hostnames Palazzo está hardcoded no frontend; não existe ainda provisionamento genérico de domínio/subdomínio por tenant no código inspecionado.
-- O histórico de migrations remoto contém versões/recursos posteriores ausentes no Git (`20260919181325` a `20260919181521`) e timestamps divergentes em migrations de 12/09. A migration `20260919235925` foi aplicada e registrada isoladamente; não reparar nem forçar o restante sem reconciliar a origem dessas versões.
+- O histórico de migrations remoto contém versões/recursos posteriores ausentes no Git (`20260919181325` a `20260919181521`) e timestamps divergentes em migrations de 12/09. As migrations `20260919235925` e `20260920004315` foram aplicadas e registradas isoladamente; não reparar nem forçar o restante sem reconciliar a origem dessas versões.
 - README descreve várias capacidades como funcionalidades; agentes devem confirmar cada uma contra código/migrations antes de elevar seu estado para VALIDADO/PUBLICADO.
 
 ## Última alteração relevante
 
-Em 19/09/2026, a migration `20260919235925_harden_booking_time_and_returning_clients.sql` foi aplicada e registrada no Supabase Chrona. Testes remotos confirmaram fuso Palazzo, ausência de slots passados, rejeição de criação no passado sem resíduo de cliente e reconhecimento de cliente recorrente. O frontend e a direção visual Palazzo passaram por validação desktop/mobile e foram publicados no commit `96d4219`; ambos os endereços HTTPS foram conferidos com a mesma identidade, logo proporcional e mensagem do WhatsApp.
+Em 19/09/2026, a migration `20260920004315_add_tenant_site_builder.sql` foi aplicada e registrada no Supabase Chrona. O motor de landing multi-tenant passou a usar o mesmo renderer no preview e na página pública, com rascunho/publicação e RLS. Testes remotos confirmaram uma configuração por tenant, acesso anônimo negado à tabela, RPC pública limitada ao conteúdo publicado, Palazzo em Luxury, Nayara em Clean, zero slots passados e zero grupos de telefone duplicado.
 
 ## Próximo incremento recomendado
 
 Antes de iniciar novas funcionalidades, verificar o ambiente real da integração Meta e fechar o ponto já aberto pela arquitetura: segredos/callback/templates e processador da máquina de estados do chatbot, com piloto controlado e evidência funcional antes de marcar como VALIDADO.
 
-A futura camada de landing pages/templates customizáveis deve ser tratada como incremento separado. Primeiro definir contrato de customização que não atravesse o Chrona Core nem o isolamento multi-tenant; não confundir a atual `visual_direction` com uma template engine completa.
+O próximo incremento da landing deve focar mídia gerenciada (upload/storage com limites e recorte), sem abrir CSS arbitrário nem atravessar o Chrona Core.
 
 ## Não fazer
 
-- Não assumir que landing page modular, biblioteca de templates, fontes selecionáveis ou subdomínios automáticos já existem.
+- Não transformar a biblioteca controlada de landing em editor livre, CSS arbitrário ou fork por tenant.
 - Não marcar Meta/chatbot como operacional apenas porque migrations e Edge Functions existem.
 - Não transformar direção visual atual em fork de código por tenant.
 - Não duplicar clientes/agendamentos dentro do CRM.

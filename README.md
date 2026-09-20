@@ -21,6 +21,7 @@ A **PALAZZO STUDIO BARBER** é o primeiro tenant real e a **Nayara Lash Designer
 - Integração com Meta Cloud API v26.0, token por tenant criptografado no Supabase Vault e envio restrito a templates aprovados.
 - Chatbot universal de agendamento replicado por tenant, com estado isolado, fila idempotente, opt-out, fallback e encaminhamento humano.
 - Modo de verificação do Super Admin para acessar qualquer painel com a conta central da Chrona e registro de auditoria.
+- Motor de landing pages multi-tenant com templates Luxury, Clean, Modern e Classic, biblioteca controlada de paletas/fontes/variantes, preview fiel, rascunho e publicação.
 
 ## Arquitetura e evolução
 

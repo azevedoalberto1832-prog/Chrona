@@ -131,6 +131,7 @@ let whatsappConnection=null,automationRules=[],automationRuns=[],notificationSet
 // user is typing. The token lives only in memory and is cleared after success.
 let whatsappConnectionDraft={businessAccountId:"",phoneNumberId:"",accessToken:""};
 let crmPipelines=[],crmStages=[],crmOpportunities=[],activePipelineId="";
+let siteConfigRow=null,siteConfigPublished=null,siteConfigDraft=null,siteEditorConfig=null;
 const save = () => {};
 let remoteSlots = [], slotProfessionals = {}, slotsLoaded = false;
 const BOOKING_PROFILE_KEY = () => `chrona-booking-profile:${SHOP_SLUG || "default"}`;
@@ -365,12 +366,16 @@ function openPaymentForm(appointment){
 }
 async function loadPublicData() {
   try {
-    const payload = await rpc("get_public_shop", { shop_slug: SHOP_SLUG });
+    const [payload,publicSiteConfig] = await Promise.all([
+      rpc("get_public_shop", { shop_slug: SHOP_SLUG }),
+      rpc("get_public_site_config", { shop_slug: SHOP_SLUG }).catch(()=>null),
+    ]);
     if (!payload?.shop) throw new Error("Empresa indisponível");
     const shop = payload.shop;
     db.services = (payload.services || []).map((s) => ({ id:s.id, name:s.name, desc:s.description, duration:s.duration_minutes, price:Number(s.price), returnDays:s.return_interval_days, active:s.active }));
     PEOPLE = (payload.professionals || []).map((p) => ({ id:p.id, name:p.name }));
     db.settings = { shop:shop.name, address:shop.address || "Endereço a confirmar", phone:shop.phone || "", open:shop.opening_time?.slice(0,5) || "09:00", close:shop.closing_time?.slice(0,5) || "19:00", breakStart:shop.break_start?.slice(0,5) || "", breakEnd:shop.break_end?.slice(0,5) || "", greeting:shop.whatsapp_message || "Olá! Agende seu horário pela Chrona.", instagram:shop.instagram || "", logo:shop.logo_url || "", description:shop.public_description || "Escolha o serviço, o profissional e o melhor horário para você.", primaryColor:shop.primary_color || "#6d5dfb", secondaryColor:shop.secondary_color || "#22c3a6", visualDirection:shop.visual_direction || "studio", timezone:shop.timezone || "America/Sao_Paulo" };
+    siteConfigPublished=ChronaSite.normalize(publicSiteConfig||ChronaSite.preset("clean"));
     applyTenantBrand(shop);
     document.title = `${shop.name} | Agendamento`;
     render();
@@ -387,18 +392,11 @@ async function loadAvailableSlots() {
   slotsLoaded=true;
 }
 function publicPage() {
-  const activeServices=db.services.filter((service)=>service.active);
-  const canBook=activeServices.length>0&&PEOPLE.length>0;
-  const shopName=esc(db.settings.shop);
-  const handle=String(db.settings.instagram||"").replace(/^@/,"");
-  const social=handle?`<a class="btn btn-outline" target="_blank" rel="noopener" href="https://www.instagram.com/${encodeURIComponent(handle)}/">${esc(db.settings.instagram)}</a>`:"";
-  const logo=db.settings.logo?`<img class="brand-logo" src="${esc(db.settings.logo)}" alt="Logo ${shopName}">`:`<span class="brand-logo logo-fallback">${initials(db.settings.shop)}</span>`;
-  const heroLogo=db.settings.logo?`<img class="hero-logo" src="${esc(db.settings.logo)}" alt="${shopName}">`:`<div class="hero-logo hero-monogram">${initials(db.settings.shop)}</div>`;
-  const whatsappMessage="Olá! Vim pelo site da Palazzo e gostaria de mais informações.";
-  const whatsapp=`https://wa.me/${String(db.settings.phone||"").replace(/\D/g,"")}?text=${encodeURIComponent(whatsappMessage)}`;
-  const bookingButton=(label,extra="")=>`<button class="btn btn-copper" data-book ${extra} ${canBook?"":"disabled"}>${label}</button>`;
-  const services=activeServices.length?activeServices.map((service)=>`<article class="service-card"><div class="service-meta"><span class="eyebrow">${Number(service.duration)} MIN</span><span class="price">${money(service.price)}</span></div><h3 style="font-size:27px;margin:25px 0 10px">${esc(service.name)}</h3><p class="muted">${esc(service.desc||"Atendimento personalizado.")}</p><button class="btn btn-outline" data-book data-service="${esc(service.id)}">Agendar este serviço</button></article>`).join(""):`<div class="empty-state full-span"><span class="empty-icon">✦</span><h3>Agenda em preparação</h3><p>Os serviços desta empresa ainda estão sendo configurados.</p></div>`;
-  return `<header class="topbar"><div class="container"><div class="brand">${logo}<div>${shopName}<small>AGENDA POR CHRONA</small></div></div><div class="desktop-actions">${social}<a class="btn btn-outline" target="_blank" rel="noopener" href="${whatsapp}">WhatsApp</a>${bookingButton("Agendar horário")}</div></div></header><main><section class="hero"><div class="container hero-grid"><div><div class="eyebrow">Agendamento online</div><h1>${shopName}</h1><p>${esc(db.settings.description||"Escolha o serviço, o profissional e o melhor horário para você.")}</p><div class="hero-actions">${bookingButton("Escolher um horário →")}${social}<a class="btn btn-outline" target="_blank" rel="noopener" href="${whatsapp}">Falar no WhatsApp</a></div>${canBook?"":'<p class="setup-note">A agenda ficará disponível assim que os serviços e profissionais forem publicados.</p>'}</div>${heroLogo}</div></section><section class="section" id="servicos"><div class="container"><div class="section-head"><div><div class="eyebrow">Serviços</div><h2>Escolha o seu atendimento</h2></div><p class="muted">Informações atualizadas diretamente pela empresa.</p></div><div class="service-grid">${services}</div></div></section><section class="section"><div class="container"><div class="location"><div><div class="eyebrow">Onde encontrar</div><h2 style="font-size:38px;margin:8px 0">${shopName}</h2><p>${esc(db.settings.address)}</p></div><div>${bookingButton("Agendar horário")} <a class="btn btn-outline" target="_blank" rel="noopener" href="https://maps.google.com/?q=${encodeURIComponent(db.settings.address)}">Abrir no mapa</a></div></div></div></section></main><footer class="footer"><div class="container"><span>© ${shopName}</span><div>${social}<button class="btn btn-outline" data-admin>Área da empresa</button></div></div></footer>`;
+  return ChronaSite.render({
+    shop:{name:db.settings.shop,address:db.settings.address,phone:db.settings.phone,open:db.settings.open,close:db.settings.close,breakStart:db.settings.breakStart,breakEnd:db.settings.breakEnd,instagram:db.settings.instagram,logo:db.settings.logo,description:db.settings.description},
+    services:db.services.filter((service)=>service.active),professionals:PEOPLE.filter((person)=>person.active!==false),
+    config:siteConfigPublished||ChronaSite.preset("clean"),preview:false,
+  });
 }
 function chronaHomePage(){
   document.title="Chrona | Agenda e gestão para negócios";
@@ -441,7 +439,7 @@ async function loadAdminData() {
     const shops=await rest(`barbershops?select=*&id=eq.${currentProfile.barbershop_id}`);
     currentShop=shops?.[0];
   }
-  const [services,professionals,clients,appointments,cash,subscriptions,categories,pipelines,stages,opportunities,reminders,connections,rules,runs,notificationRows,personalRows]=await Promise.all([
+  const [services,professionals,clients,appointments,cash,subscriptions,categories,pipelines,stages,opportunities,reminders,connections,rules,runs,notificationRows,personalRows,siteRows]=await Promise.all([
     rest(`services?select=*&barbershop_id=eq.${currentProfile.barbershop_id}&order=name`),
     rest(`professionals?select=*&barbershop_id=eq.${currentProfile.barbershop_id}&order=name`),
     rest(`clients?select=*&barbershop_id=eq.${currentProfile.barbershop_id}&order=name`),
@@ -458,6 +456,7 @@ async function loadAdminData() {
     rest(`automation_runs?select=id,rule_id,status,scheduled_for,attempt_count,finished_at,error_message&barbershop_id=eq.${currentProfile.barbershop_id}&order=created_at.desc&limit=25`),
     rest(`tenant_notification_settings?select=*&barbershop_id=eq.${currentProfile.barbershop_id}`),
     rest(`personal_reminders?select=*&barbershop_id=eq.${currentProfile.barbershop_id}&order=next_run_at`),
+    rest(`tenant_site_configs?select=*&barbershop_id=eq.${currentProfile.barbershop_id}`),
   ]);
   currentSubscription=subscriptions?.[0];
   db.services=(services||[]).map(s=>({id:s.id,name:s.name,desc:s.description,duration:s.duration_minutes,price:Number(s.price),returnDays:s.return_interval_days,active:s.active}));
@@ -475,6 +474,10 @@ async function loadAdminData() {
   automationRuns=runs||[];
   notificationSettings=notificationRows?.[0]||null;
   personalReminders=personalRows||[];
+  siteConfigRow=siteRows?.[0]||null;
+  siteConfigPublished=ChronaSite.normalize(siteConfigRow?.published_config||ChronaSite.preset("clean"));
+  siteConfigDraft=ChronaSite.normalize(siteConfigRow?.draft_config||siteConfigRow?.published_config||siteConfigPublished);
+  siteEditorConfig=ChronaSite.clone(siteConfigDraft);
   if(!crmPipelines.some((pipeline)=>pipeline.id===activePipelineId)) activePipelineId=crmPipelines.find((pipeline)=>pipeline.active)?.id||crmPipelines[0]?.id||"";
   if(currentShop){
     db.settings={shop:currentShop.name,address:currentShop.address||"",phone:currentShop.phone||"",open:currentShop.opening_time?.slice(0,5)||"09:00",close:currentShop.closing_time?.slice(0,5)||"19:00",breakStart:currentShop.break_start?.slice(0,5)||"",breakEnd:currentShop.break_end?.slice(0,5)||"",greeting:currentShop.whatsapp_message||"",instagram:currentShop.instagram||"",logo:currentShop.logo_url||"",description:currentShop.public_description||"",primaryColor:currentShop.primary_color||"#6d5dfb",secondaryColor:currentShop.secondary_color||"#22c3a6",visualDirection:currentShop.visual_direction||"studio",timezone:currentShop.timezone||"America/Sao_Paulo"};
@@ -633,12 +636,47 @@ const nav = [
   ["automacoes", "Automações"],
   ["servicos", "Serviços"],
   ["profissionais", "Profissionais"],
+  ["site", "Personalizar Site"],
   ["config", "Configurações"],
 ];
+const siteShop=()=>({name:db.settings.shop,address:db.settings.address,phone:db.settings.phone,open:db.settings.open,close:db.settings.close,breakStart:db.settings.breakStart,breakEnd:db.settings.breakEnd,instagram:db.settings.instagram,logo:db.settings.logo,description:db.settings.description});
+const siteOptions=(items,selected)=>Object.entries(items).map(([id,item])=>`<option value="${esc(id)}" ${id===selected?"selected":""}>${esc(item.name||ChronaSite.variantNames[id]||id)}</option>`).join("");
+const siteVariantOptions=(type,selected)=>ChronaSite.variants[type].map((id)=>`<option value="${esc(id)}" ${id===selected?"selected":""}>${esc(ChronaSite.variantNames[id]||id)}</option>`).join("");
+function siteBuilderContent(){
+  const config=ChronaSite.normalize(siteEditorConfig||siteConfigDraft||ChronaSite.preset("clean"));
+  siteEditorConfig=config;
+  const c=config.content;
+  const sectionRows=config.sections.map((section,index)=>`<div class="site-section-row"><span>${esc(ChronaSite.sectionNames[section.id])}</span><button class="badge ${section.visible?"green":""}" data-site-toggle="${section.id}">${section.visible?"Visível":"Oculta"}</button><button class="btn btn-ghost" data-site-move="${section.id}" data-direction="up" ${index===0?"disabled":""}>↑</button><button class="btn btn-ghost" data-site-move="${section.id}" data-direction="down" ${index===config.sections.length-1?"disabled":""}>↓</button></div>`).join("");
+  return `<div class="site-builder"><div class="site-builder-controls">
+    <section class="site-builder-block"><h3>Biblioteca controlada</h3><label class="field"><span>Buscar estilo</span><input id="site-library-search" placeholder="Ex.: dourado, moderno, serif"></label><div class="site-search-results" id="site-search-results"></div></section>
+    <section class="site-builder-block"><h3>Direção visual</h3><label class="field"><span>Template</span><select data-site-field="template">${siteOptions(ChronaSite.templates,config.template)}</select></label><label class="field"><span>Paleta</span><select data-site-field="palette">${siteOptions(ChronaSite.palettes,config.palette)}</select></label><label class="field"><span>Tipografia</span><select data-site-field="fontPair">${siteOptions(ChronaSite.fonts,config.fontPair)}</select></label><div class="form-grid"><label class="field"><span>Hero</span><select data-site-variant="hero">${siteVariantOptions("hero",config.variants.hero)}</select></label><label class="field"><span>Botão</span><select data-site-variant="button">${siteVariantOptions("button",config.variants.button)}</select></label><label class="field"><span>Card</span><select data-site-variant="card">${siteVariantOptions("card",config.variants.card)}</select></label><label class="field"><span>Serviços</span><select data-site-variant="services">${siteVariantOptions("services",config.variants.services)}</select></label><label class="field"><span>Profissionais</span><select data-site-variant="professionals">${siteVariantOptions("professionals",config.variants.professionals)}</select></label></div></section>
+    <section class="site-builder-block"><h3>Hero e contato</h3><label class="field"><span>Sobretítulo</span><input data-site-content="hero.eyebrow" value="${esc(c.hero.eyebrow)}"></label><label class="field"><span>Título</span><input data-site-content="hero.title" value="${esc(c.hero.title)}" placeholder="Usa o nome da empresa se vazio"></label><label class="field"><span>Texto</span><textarea rows="3" data-site-content="hero.subtitle">${esc(c.hero.subtitle)}</textarea></label><label class="field"><span>Botão principal</span><input data-site-content="hero.ctaLabel" value="${esc(c.hero.ctaLabel)}"></label><label class="field"><span>Imagem do hero</span><input data-site-content="hero.imageUrl" value="${esc(c.hero.imageUrl)}" placeholder="https://... ou caminho da imagem"></label><label class="field"><span>Mensagem do WhatsApp</span><textarea rows="3" data-site-content="whatsappMessage">${esc(c.whatsappMessage)}</textarea></label></section>
+    <section class="site-builder-block"><h3>Conteúdo institucional</h3><label class="field"><span>Sobretítulo</span><input data-site-content="about.eyebrow" value="${esc(c.about.eyebrow)}"></label><label class="field"><span>Título</span><input data-site-content="about.title" value="${esc(c.about.title)}"></label><label class="field"><span>Texto</span><textarea rows="4" data-site-content="about.body">${esc(c.about.body)}</textarea></label><label class="field"><span>Diferenciais (um por linha)</span><textarea rows="4" data-site-list="differentials">${esc((c.differentials||[]).join("\n"))}</textarea></label><label class="field"><span>Galeria (uma URL por linha)</span><textarea rows="4" data-site-list="gallery">${esc((c.gallery||[]).join("\n"))}</textarea></label><label class="field"><span>Depoimentos (Autor | Texto)</span><textarea rows="4" data-site-testimonials>${esc((c.testimonials||[]).map((item)=>`${item.author} | ${item.quote}`).join("\n"))}</textarea></label></section>
+    <section class="site-builder-block"><h3>Chamada final</h3><label class="field"><span>Sobretítulo</span><input data-site-content="finalCta.eyebrow" value="${esc(c.finalCta.eyebrow)}"></label><label class="field"><span>Título</span><input data-site-content="finalCta.title" value="${esc(c.finalCta.title)}"></label><label class="field"><span>Texto</span><textarea rows="3" data-site-content="finalCta.body">${esc(c.finalCta.body)}</textarea></label><label class="field"><span>Botão</span><input data-site-content="finalCta.label" value="${esc(c.finalCta.label)}"></label></section>
+    <section class="site-builder-block"><h3>Seções e ordem</h3><div class="site-section-order">${sectionRows}</div></section>
+    <div class="site-builder-actions"><button class="btn btn-outline" data-site-save ${canManageTenant()?"":"disabled"}>Salvar rascunho</button><button class="btn btn-dark" data-site-publish ${canManageTenant()?"":"disabled"}>Publicar alterações</button></div>
+  </div><aside class="site-preview-shell"><div class="site-preview-toolbar"><div><button class="btn btn-outline" data-site-viewport="desktop">Desktop</button><button class="btn btn-outline" data-site-viewport="mobile">Celular</button></div><span class="site-builder-status">${siteConfigRow?.published_at?`Publicado em ${dateTimeBR(siteConfigRow.published_at)}`:"Ainda não publicado"}</span></div><div class="site-preview-canvas" id="site-preview-canvas"><div class="site-preview-document" id="site-preview-document">${ChronaSite.render({shop:siteShop(),services:db.services.filter((item)=>item.active),professionals:PEOPLE.filter((item)=>item.active!==false),config,preview:true})}</div></div></aside></div>`;
+}
+function setSiteContent(path,value){
+  const parts=path.split(".");let target=siteEditorConfig.content;
+  parts.slice(0,-1).forEach((part)=>target=target[part]);target[parts.at(-1)]=value;
+}
+function updateSitePreview(){
+  const preview=document.querySelector("#site-preview-document");
+  if(preview) preview.innerHTML=ChronaSite.render({shop:siteShop(),services:db.services.filter((item)=>item.active),professionals:PEOPLE.filter((item)=>item.active!==false),config:siteEditorConfig,preview:true});
+}
+async function persistSiteConfig(publish){
+  const normalized=ChronaSite.normalize(siteEditorConfig),now=new Date().toISOString();
+  const body={barbershop_id:currentProfile.barbershop_id,draft_config:normalized,updated_by:authSession.user.id,updated_at:now};
+  if(publish){body.published_config=normalized;body.published_at=now;}
+  const rows=await rest("tenant_site_configs?on_conflict=barbershop_id",{method:"POST",body,prefer:"resolution=merge-duplicates,return=representation"});
+  siteConfigRow=rows?.[0]||{...siteConfigRow,...body};siteConfigDraft=ChronaSite.clone(normalized);siteEditorConfig=ChronaSite.clone(normalized);
+  if(publish) siteConfigPublished=ChronaSite.clone(normalized);
+}
 function adminPage() {
   const logo=db.settings.logo?`<img class="brand-logo" src="${esc(db.settings.logo)}" alt="Logo ${esc(db.settings.shop)}">`:`<span class="brand-logo logo-fallback">${initials(db.settings.shop)}</span>`;
   const supportBanner=platformSupportMode?`<div class="support-mode"><span><i></i><b>Modo de verificação Chrona</b><small>Você está administrando ${esc(db.settings.shop)} com a conta Super Admin.</small></span><button class="btn btn-outline" data-use-platform>Voltar à plataforma</button></div>`:"";
-  return `<div class="admin"><div class="admin-shell"><aside class="sidebar"><div class="brand">${logo}<div>${db.settings.shop}<small>GESTÃO CHRONA</small></div></div><nav class="nav">${nav.map((n) => `<button class="${adminTab === n[0] ? "active" : ""}" data-tab="${n[0]}">${n[1]}</button>`).join("")}<button data-public>↗ Página pública</button>${platformSupportMode?'<button data-use-platform>← Super Admin</button>':""}<button data-logout>Sair</button></nav></aside><main class="admin-main">${supportBanner}<header class="admin-header"><div><div class="eyebrow">${db.settings.shop} · CHRONA</div><h1>${nav.find((n) => n[0] === adminTab)[1]}</h1></div><button class="btn btn-dark" data-quick>+ Novo</button></header>${adminContent()}</main></div><nav class="mobile-nav">${nav.map((n) => `<button class="${adminTab === n[0] ? "active" : ""}" data-tab="${n[0]}">${n[1]}</button>`).join("")}</nav></div>`;
+  return `<div class="admin"><div class="admin-shell"><aside class="sidebar"><div class="brand">${logo}<div>${db.settings.shop}<small>GESTÃO CHRONA</small></div></div><nav class="nav">${nav.map((n) => `<button class="${adminTab === n[0] ? "active" : ""}" data-tab="${n[0]}">${n[1]}</button>`).join("")}<button data-public>↗ Página pública</button>${platformSupportMode?'<button data-use-platform>← Super Admin</button>':""}<button data-logout>Sair</button></nav></aside><main class="admin-main">${supportBanner}<header class="admin-header"><div><div class="eyebrow">${db.settings.shop} · CHRONA</div><h1>${nav.find((n) => n[0] === adminTab)[1]}</h1></div>${adminTab==="site"?`<a class="btn btn-outline" target="_blank" rel="noopener" href="?tenant=${encodeURIComponent(currentShop.slug)}">Ver site publicado</a>`:'<button class="btn btn-dark" data-quick>+ Novo</button>'}</header>${adminContent()}</main></div><nav class="mobile-nav">${nav.map((n) => `<button class="${adminTab === n[0] ? "active" : ""}" data-tab="${n[0]}">${n[1]}</button>`).join("")}</nav></div>`;
 }
 function crmContent(){
   const pipeline=currentPipeline();
@@ -668,6 +706,7 @@ function adminContent() {
     expense = db.cash
       .filter((x) => x.type === "saida")
       .reduce((a, x) => a + x.value, 0);
+  if(adminTab === "site") return siteBuilderContent();
   if (adminTab === "dashboard")
     return `<div class="metrics"><div class="metric"><small>Faturamento hoje</small><b>${money(db.cash.filter((x) => x.type === "entrada" && x.date === today()).reduce((a, x) => a + x.value, 0))}</b></div><div class="metric"><small>Saldo do caixa</small><b>${money(revenue - expense)}</b></div><div class="metric"><small>Agendamentos</small><b>${db.appointments.length}</b></div><div class="metric"><small>Ticket médio</small><b>${money(revenue / Math.max(1, db.cash.filter((x) => x.type === "entrada").length))}</b></div></div><div class="split"><section class="panel"><h3>Faturamento — últimos 7 dias</h3><div class="chart">${[42, 68, 55, 82, 64, 92, 73].map((x, i) => `<div class="bar-col"><div class="bar" style="height:${x}%"></div>${["S", "T", "Q", "Q", "S", "S", "D"][i]}</div>`).join("")}</div></section><section class="panel"><h3>Próximos atendimentos</h3>${
       db.appointments
@@ -766,7 +805,27 @@ function render() {
   app.innerHTML = PASSWORD_FLOW ? passwordPage() : location.hash === "#admin" ? (!authSession ? loginPage() : !adminLoaded ? loadingPage() : currentProfile?.role==="platform_admin" ? (platformSupportMode?adminPage():PLATFORM_ENTRY?platformPage():tenantAdminGuardPage()) : currentSubscription?.status==="suspended" ? suspendedPage() : adminPage()) : CHRONA_HOME ? chronaHomePage() : publicPage();
   bind();
 }
+function bindSiteBuilder(){
+  if(adminTab!=="site"||!siteEditorConfig) return;
+  document.querySelectorAll("[data-site-field]").forEach((field)=>field.addEventListener("change",()=>{
+    if(field.dataset.siteField==="template"){siteEditorConfig=ChronaSite.preset(field.value,siteEditorConfig);render();return;}
+    siteEditorConfig[field.dataset.siteField]=field.value;updateSitePreview();
+  }));
+  document.querySelectorAll("[data-site-variant]").forEach((field)=>field.addEventListener("change",()=>{siteEditorConfig.variants[field.dataset.siteVariant]=field.value;updateSitePreview();}));
+  document.querySelectorAll("[data-site-content]").forEach((field)=>field.addEventListener("input",()=>{setSiteContent(field.dataset.siteContent,field.value);updateSitePreview();}));
+  document.querySelectorAll("[data-site-list]").forEach((field)=>field.addEventListener("input",()=>{siteEditorConfig.content[field.dataset.siteList]=field.value.split(/\r?\n/).map((item)=>item.trim()).filter(Boolean);updateSitePreview();}));
+  document.querySelector("[data-site-testimonials]")?.addEventListener("input",(event)=>{siteEditorConfig.content.testimonials=event.currentTarget.value.split(/\r?\n/).map((line)=>{const [author,...quote]=line.split("|");return {author:(author||"").trim(),quote:quote.join("|").trim()};}).filter((item)=>item.author&&item.quote);updateSitePreview();});
+  document.querySelectorAll("[data-site-toggle]").forEach((button)=>button.addEventListener("click",()=>{const section=siteEditorConfig.sections.find((item)=>item.id===button.dataset.siteToggle);if(section)section.visible=!section.visible;render();}));
+  document.querySelectorAll("[data-site-move]").forEach((button)=>button.addEventListener("click",()=>{const index=siteEditorConfig.sections.findIndex((item)=>item.id===button.dataset.siteMove),target=index+(button.dataset.direction==="up"?-1:1);if(index<0||target<0||target>=siteEditorConfig.sections.length)return;[siteEditorConfig.sections[index],siteEditorConfig.sections[target]]=[siteEditorConfig.sections[target],siteEditorConfig.sections[index]];render();}));
+  document.querySelectorAll("[data-site-viewport]").forEach((button)=>button.addEventListener("click",()=>document.querySelector("#site-preview-canvas")?.classList.toggle("mobile",button.dataset.siteViewport==="mobile")));
+  const search=document.querySelector("#site-library-search"),results=document.querySelector("#site-search-results");
+  search?.addEventListener("input",()=>{results.innerHTML=ChronaSite.search(search.value).map((item)=>`<button class="site-search-result" data-site-result-type="${esc(item.type)}" data-site-result-id="${esc(item.id)}"><b>${esc(item.name)}</b><small>${esc(item.type)}</small></button>`).join("")||`<small class="muted">${search.value.trim()?"Nenhum item encontrado.":"Digite para buscar templates, paletas, fontes e variantes."}</small>`;results.querySelectorAll("[data-site-result-type]").forEach((button)=>button.addEventListener("click",()=>{const type=button.dataset.siteResultType,id=button.dataset.siteResultId;if(type==="template")siteEditorConfig=ChronaSite.preset(id,siteEditorConfig);else if(type==="palette"||type==="fontPair")siteEditorConfig[type]=id;else if(ChronaSite.variants[type])siteEditorConfig.variants[type]=id;render();}));});
+  search?.dispatchEvent(new Event("input"));
+  document.querySelector("[data-site-save]")?.addEventListener("click",async(event)=>{const button=event.currentTarget;button.disabled=true;button.textContent="Salvando…";try{await persistSiteConfig(false);render();toast("Rascunho salvo. O site publicado não mudou.");}catch(error){toast(error.message);button.disabled=false;button.textContent="Salvar rascunho";}});
+  document.querySelector("[data-site-publish]")?.addEventListener("click",async(event)=>{const button=event.currentTarget;button.disabled=true;button.textContent="Publicando…";try{await persistSiteConfig(true);render();toast("Site publicado com sucesso.");}catch(error){toast(error.message);button.disabled=false;button.textContent="Publicar alterações";}});
+}
 function bind() {
+  bindSiteBuilder();
   document.querySelector("#password-form")?.addEventListener("submit",async event=>{event.preventDefault();const form=new FormData(event.currentTarget),password=form.get("password"),confirm=form.get("confirm"),button=event.currentTarget.querySelector("button[type=submit]");if(password!==confirm)return toast("As senhas precisam ser iguais");button.disabled=true;button.textContent="Salvando…";try{const user=await updatePassword(password);const tenant=SHOP_SLUG||user?.user_metadata?.tenant_slug||"";sessionStorage.removeItem("chrona-session");sessionStorage.setItem("chrona-login-email",user?.email||AUTH_CALLBACK.get("email")||"");sessionStorage.setItem("chrona-login-notice",`Agora entre para acessar ${tenant?db.settings.shop:"a Chrona"}.`);const destination=tenant?`${location.pathname}?tenant=${encodeURIComponent(tenant)}#admin`:`${location.pathname}?platform=chrona#admin`;location.replace(destination);}catch(error){toast(error.message);button.disabled=false;button.textContent="Criar senha e continuar";}});
   document.querySelector("#login-form")?.addEventListener("submit",async(event)=>{event.preventDefault();const button=event.currentTarget.querySelector("button[type=submit]");button.disabled=true;button.textContent="Entrando…";try{const form=new FormData(event.currentTarget);sessionStorage.setItem("chrona-login-email",String(form.get("email")||""));await signIn(form.get("email"),form.get("password"));await loadAdminData();loginNotice="";render();toast("Acesso autorizado");}catch(error){toast(error.message);button.disabled=false;button.textContent="Entrar no painel";}});
   document.querySelector("[data-forgot]")?.addEventListener("click",async()=>{const email=document.querySelector('#login-form [name=email]').value.trim();if(!email)return toast("Digite seu e-mail primeiro");try{await requestPasswordReset(email);toast("Se o e-mail estiver cadastrado, o link será enviado");}catch(error){toast(error.message);}});
