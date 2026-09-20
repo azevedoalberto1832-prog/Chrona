@@ -75,11 +75,11 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 - A autenticação global por WhatsApp OTP permanece desligada: a Meta está conectada para Palazzo, mas não existe template OTP aprovado/configurado nem Auth Hook ativo.
 - O histórico de migrations remoto contém versões/recursos posteriores ausentes no Git (`20260919181325` a `20260919181521`) e timestamps divergentes em migrations de 12/09. As migrations `20260919235925`, `20260920004315` e `20260920012106` foram aplicadas e registradas isoladamente; não reparar nem forçar o restante sem reconciliar a origem dessas versões.
 - README descreve várias capacidades como funcionalidades; agentes devem confirmar cada uma contra código/migrations antes de elevar seu estado para VALIDADO/PUBLICADO.
-- A correção de CORS do onboarding e a rota universal de verificação do Super Admin estão implementadas, mas ainda aguardam validação autenticada após publicação.
+- A correção de CORS do onboarding foi publicada e validada por preflight nos domínios Chrona, GitHub Pages e ambiente local. A rota universal de verificação do Super Admin também foi publicada e teve seu carregamento confirmado; falta somente uma nova validação autenticada pelo usuário no painel.
 
 ## Última alteração relevante
 
-Em 20/09/2026, o deploy `60c68d1` publicou a separação entre domínio Chrona e subdomínio Palazzo, hero centralizado, serviços alinhados, quatro diferenciais e galeria universal. As migrations relacionadas foram aplicadas e registradas; o ciclo de 5 s com retorno contínuo foi testado. O envio OTP permanece deliberadamente inativo até a aprovação/configuração do template Meta.
+Em 20/09/2026, o deploy `d229776` corrigiu o CORS do onboarding e publicou a rota auditada de suporte do Super Admin por tenant, preservando a mesma sessão da plataforma. O envio OTP permanece deliberadamente inativo até a aprovação/configuração do template Meta.
 
 ## Próximo incremento recomendado
 
