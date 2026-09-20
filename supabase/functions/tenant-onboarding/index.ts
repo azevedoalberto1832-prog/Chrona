@@ -192,7 +192,9 @@ Deno.serve(async (request: Request) => {
     if (existingOwner) return json(request, { error: "Esta empresa já possui um responsável ativo" }, 409);
   }
 
-  const redirectTo = `${CHRONA_SITE_URL}?tenant=${encodeURIComponent(tenantSlug)}`;
+  const redirectTo = tenantSlug === "palazzo"
+    ? "https://palazzo.chronasystem.com.br/"
+    : `${CHRONA_SITE_URL}?tenant=${encodeURIComponent(tenantSlug)}`;
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
     ownerEmail,
     {

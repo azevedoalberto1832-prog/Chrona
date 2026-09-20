@@ -26,7 +26,7 @@ A **PALAZZO STUDIO BARBER** é o primeiro tenant real e a **Nayara Lash Designer
 
 ## Arquitetura e evolução
 
-A aplicação usa um único banco multi-tenant no Supabase. Cada registro operacional pertence a um estabelecimento e as políticas RLS aplicam o isolamento no banco. O tenant público é selecionado por `?tenant=<slug>`; o Palazzo também é resolvido pelo hostname `palazzo.chronasystem.com.br`. Palazzo e Nayara usam o mesmo código e dados isolados. A fundação de CRM e automações está documentada em `ARCHITECTURE.md`; o chatbot universal está detalhado em `docs/WHATSAPP_CHATBOT.md` e permanece desativado até a conexão oficial de cada tenant.
+A aplicação usa um único banco multi-tenant no Supabase. Cada registro operacional pertence a um estabelecimento e as políticas RLS aplicam o isolamento no banco. Em produção, `chronasystem.com.br` é exclusivo da plataforma e a Palazzo usa a URL canônica `palazzo.chronasystem.com.br`; `?tenant=<slug>` permanece apenas como fallback de desenvolvimento para tenants sem hostname publicado. Palazzo e Nayara usam o mesmo código e dados isolados. A fundação de CRM e automações está documentada em `ARCHITECTURE.md`; o chatbot universal está detalhado em `docs/WHATSAPP_CHATBOT.md` e permanece desativado até a conexão oficial de cada tenant.
 
 ## Execução local
 

@@ -2,23 +2,40 @@ const SUPABASE_URL = "https://qcjjqdkjfvnbslbpnrgk.supabase.co";
 const SUPABASE_KEY = "sb_publishable_27mV2bABNSGQYPkGEF-T4g_XBQtb2r7";
 const PAGE_PARAMS = new URLSearchParams(location.search);
 const PLATFORM_ENTRY = PAGE_PARAMS.has("platform");
+const PLATFORM_HOSTS = new Set(["chronasystem.com.br","www.chronasystem.com.br"]);
 const HOST_TENANTS = Object.freeze({
   "palazzo-barber.vercel.app": "palazzo",
   "palazzo.chronasystem.com.br": "palazzo",
 });
-const SHOP_SLUG = PAGE_PARAMS.get("tenant") || HOST_TENANTS[location.hostname.toLowerCase()] || null;
+const TENANT_PUBLIC_URLS = Object.freeze({
+  palazzo: "https://palazzo.chronasystem.com.br/",
+});
+const CURRENT_HOST = location.hostname.toLowerCase();
+const HOST_TENANT = HOST_TENANTS[CURRENT_HOST] || null;
+const QUERY_TENANT = PAGE_PARAMS.get("tenant");
+const SHOP_SLUG = HOST_TENANT || (PLATFORM_HOSTS.has(CURRENT_HOST) ? null : QUERY_TENANT) || null;
 const CHRONA_HOME = !SHOP_SLUG && !PLATFORM_ENTRY;
+const tenantPublicUrl = (slug, hash="") => {
+  const canonical=TENANT_PUBLIC_URLS[slug];
+  return canonical ? `${canonical}${String(hash).replace(/^#?/,"#")}`.replace(/#$/g,"") : `${location.pathname}?tenant=${encodeURIComponent(slug)}${hash}`;
+};
+if((PLATFORM_HOSTS.has(CURRENT_HOST)&&QUERY_TENANT)||(HOST_TENANT&&PAGE_PARAMS.has("tenant"))){
+  PAGE_PARAMS.delete("tenant");
+  const cleanQuery=PAGE_PARAMS.toString();
+  history.replaceState(null,"",`${location.pathname}${cleanQuery?`?${cleanQuery}`:""}${location.hash}`);
+}
 const AUTH_CALLBACK = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : "");
 const PASSWORD_FLOW = ["recovery","invite"].includes(AUTH_CALLBACK.get("type")) && !!AUTH_CALLBACK.get("access_token");
 document.body.dataset.tenant = SHOP_SLUG || "chrona";
 let authSession = JSON.parse(sessionStorage.getItem("chrona-session") || "null");
+let customerSession = JSON.parse(localStorage.getItem("chrona-customer-session") || "null");
 let loginNotice = sessionStorage.getItem("chrona-login-notice") || "";
 const rememberedLoginEmail = sessionStorage.getItem("chrona-login-email") || "";
 sessionStorage.removeItem("chrona-login-notice");
-async function rpc(name, body) {
+async function rpc(name, body, accessToken=authSession?.access_token) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: "POST",
-    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json", ...(authSession?.access_token ? { Authorization:`Bearer ${authSession.access_token}` } : {}) },
+    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json", ...(accessToken ? { Authorization:`Bearer ${accessToken}` } : {}) },
     body: JSON.stringify(body),
   });
   const data = await response.json().catch(() => null);
@@ -398,9 +415,33 @@ function publicPage() {
     config:siteConfigPublished||ChronaSite.preset("clean"),preview:false,
   });
 }
+const customerPhone = (value) => {
+  const digits=String(value||"").replace(/\D/g,"");
+  return digits.startsWith("55")&&digits.length>=12?`+${digits}`:`+55${digits}`;
+};
+async function requestCustomerOtp(phone){
+  const response=await fetch(`${SUPABASE_URL}/auth/v1/otp`,{method:"POST",headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify({phone:customerPhone(phone),create_user:true})});
+  const data=await response.json().catch(()=>null);
+  if(!response.ok) throw new Error(data?.msg||data?.message||"Não foi possível enviar o código agora");
+}
+async function verifyCustomerOtp(phone,token){
+  const response=await fetch(`${SUPABASE_URL}/auth/v1/verify`,{method:"POST",headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify({phone:customerPhone(phone),token,type:"sms"})});
+  const data=await response.json().catch(()=>null);
+  if(!response.ok||!data?.access_token) throw new Error(data?.msg||data?.message||"Código inválido ou expirado");
+  customerSession=data;
+  localStorage.setItem("chrona-customer-session",JSON.stringify(data));
+  return data;
+}
+async function refreshCustomerSession(){
+  if(!customerSession?.refresh_token) return null;
+  const response=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,{method:"POST",headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:customerSession.refresh_token})});
+  const data=await response.json().catch(()=>null);
+  if(!response.ok||!data?.access_token){ customerSession=null; localStorage.removeItem("chrona-customer-session"); return null; }
+  customerSession=data; localStorage.setItem("chrona-customer-session",JSON.stringify(data)); return data;
+}
 function chronaHomePage(){
   document.title="Chrona | Agenda e gestão para negócios";
-  return `<header class="topbar chrona-site"><div class="container"><div class="brand"><span class="brand-logo" style="display:grid;place-items:center;font-weight:800">C</span><div>CHRONA<small>AGENDA · GESTÃO · IDENTIDADE</small></div></div><div><a class="btn btn-outline" href="#plataforma">Plataforma</a> <a class="btn btn-dark" href="?platform=chrona#admin">Entrar</a></div></div></header><main class="chrona-site"><section class="hero"><div class="container hero-grid"><div><div class="eyebrow">SaaS MULTI-TENANT</div><h1>Tempo organizado. Negócios em movimento.</h1><p>A Chrona conecta agenda, clientes e caixa em uma única plataforma para empresas que trabalham com atendimento por horário.</p><div class="hero-actions"><a class="btn btn-dark" href="#demonstracoes">Ver demonstrações</a><a class="btn btn-outline" href="?platform=chrona#admin">Administração Chrona</a></div></div><div class="hero-card"><div class="eyebrow">UMA PLATAFORMA</div><h2 style="font-size:42px;margin:12px 0">Vários negócios.<br>Dados isolados.</h2><p>Cada empresa possui identidade, serviços, equipe, clientes e operação próprios.</p></div></div></section><section class="section" id="plataforma"><div class="container"><div class="section-head"><div><div class="eyebrow">PLATAFORMA</div><h2>Base pronta para operar</h2></div></div><div class="service-grid"><article class="service-card"><div class="eyebrow">OPERAÇÃO</div><h3>Agenda inteligente</h3><p class="muted">Disponibilidade real, múltiplos serviços e bloqueio contra sobreposição.</p></article><article class="service-card"><div class="eyebrow">GESTÃO</div><h3>Clientes e caixa</h3><p class="muted">Atendimento, histórico, pagamentos e indicadores conectados.</p></article><article class="service-card"><div class="eyebrow">IDENTIDADE</div><h3>Cada empresa é única</h3><p class="muted">Cores, logotipo, contato e experiência pública configurados para cada negócio.</p></article></div></div></section><section class="section" id="demonstracoes"><div class="container"><div class="section-head"><div><div class="eyebrow">AMBIENTES</div><h2>Demonstrações da plataforma</h2></div></div><div class="split"><article class="service-card"><div class="eyebrow">BARBEARIA</div><h3>Palazzo Studio Barber</h3><p class="muted">Primeira empresa real da Chrona.</p><a class="btn btn-outline" href="?tenant=palazzo">Abrir demonstração</a></article><article class="service-card"><div class="eyebrow">LASH DESIGNER</div><h3>Nayara Lash Designer</h3><p class="muted">Ambiente de validação multi-segmento.</p><a class="btn btn-outline" href="?tenant=nayara-lash">Abrir demonstração</a></article></div></div></section></main><footer class="footer chrona-site"><div class="container"><span>© Chrona</span><span class="muted">Uma aplicação. Várias empresas.</span></div></footer>`;
+  return `<header class="topbar chrona-site"><div class="container"><div class="brand"><span class="brand-logo" style="display:grid;place-items:center;font-weight:800">C</span><div>CHRONA<small>AGENDA · GESTÃO · IDENTIDADE</small></div></div><div><a class="btn btn-outline" href="#plataforma">Plataforma</a> <a class="btn btn-dark" href="?platform=chrona#admin">Entrar</a></div></div></header><main class="chrona-site"><section class="hero"><div class="container hero-grid"><div><div class="eyebrow">SaaS MULTI-TENANT</div><h1>Tempo organizado. Negócios em movimento.</h1><p>A Chrona conecta agenda, clientes e caixa em uma única plataforma para empresas que trabalham com atendimento por horário.</p><div class="hero-actions"><a class="btn btn-dark" href="#demonstracoes">Ver demonstrações</a><a class="btn btn-outline" href="?platform=chrona#admin">Administração Chrona</a></div></div><div class="hero-card"><div class="eyebrow">UMA PLATAFORMA</div><h2 style="font-size:42px;margin:12px 0">Vários negócios.<br>Dados isolados.</h2><p>Cada empresa possui identidade, serviços, equipe, clientes e operação próprios.</p></div></div></section><section class="section" id="plataforma"><div class="container"><div class="section-head"><div><div class="eyebrow">PLATAFORMA</div><h2>Base pronta para operar</h2></div></div><div class="service-grid"><article class="service-card"><div class="eyebrow">OPERAÇÃO</div><h3>Agenda inteligente</h3><p class="muted">Disponibilidade real, múltiplos serviços e bloqueio contra sobreposição.</p></article><article class="service-card"><div class="eyebrow">GESTÃO</div><h3>Clientes e caixa</h3><p class="muted">Atendimento, histórico, pagamentos e indicadores conectados.</p></article><article class="service-card"><div class="eyebrow">IDENTIDADE</div><h3>Cada empresa é única</h3><p class="muted">Cores, logotipo, contato e experiência pública configurados para cada negócio.</p></article></div></div></section><section class="section" id="demonstracoes"><div class="container"><div class="section-head"><div><div class="eyebrow">AMBIENTES</div><h2>Demonstrações da plataforma</h2></div></div><div class="split"><article class="service-card"><div class="eyebrow">BARBEARIA</div><h3>Palazzo Studio Barber</h3><p class="muted">Primeira empresa real da Chrona.</p><a class="btn btn-outline" href="${tenantPublicUrl("palazzo")}">Abrir demonstração</a></article><article class="service-card"><div class="eyebrow">LASH DESIGNER</div><h3>Nayara Lash Designer</h3><p class="muted">Ambiente de validação multi-segmento.</p><span class="badge">Ambiente interno</span></article></div></div></section></main><footer class="footer chrona-site"><div class="container"><span>© Chrona</span><span class="muted">Uma aplicação. Várias empresas.</span></div></footer>`;
 }
 async function loadAdminData() {
   if(!authSession) return;
@@ -490,7 +531,7 @@ function loginPage(){
   const title=PLATFORM_ENTRY?"Administração da Chrona":`Acessar ${esc(company)}`;
   const description=PLATFORM_ENTRY?"Entre com sua conta de administrador da plataforma.":"Use o e-mail que recebeu o convite para acessar o painel da empresa.";
   const notice=loginNotice?`<div class="auth-notice"><span>✓</span><div><b>Senha criada com sucesso</b><small>${esc(loginNotice)}</small></div></div>`:"";
-  return `<main class="section chrona-login"><div class="auth-shell"><section class="auth-copy"><a class="chrona-wordmark" href="${PLATFORM_ENTRY?location.pathname:`${location.pathname}?tenant=${encodeURIComponent(SHOP_SLUG||"")}`}"><span>C</span> CHRONA</a><div><div class="eyebrow">ACESSO SEGURO</div><h1>Seu negócio,<br>no ritmo certo.</h1><p>Agenda, clientes e operação reunidos em um painel simples.</p></div><small>Ambiente protegido pela Chrona</small></section><section class="panel auth-card"><div class="eyebrow">${PLATFORM_ENTRY?"SUPER ADMIN":"PAINEL DA EMPRESA"}</div><h2>${title}</h2><p class="muted">${description}</p>${notice}<form id="login-form"><label class="field"><span>E-mail</span><input name="email" type="email" value="${esc(rememberedLoginEmail)}" autocomplete="username" required></label><label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" required></label><button type="button" class="btn btn-ghost auth-forgot" data-forgot>Esqueci minha senha</button><div class="modal-actions"><button type="button" class="btn btn-outline" data-public>Voltar</button><button class="btn btn-dark" type="submit">Entrar no painel</button></div></form></section></div></main>`;
+  return `<main class="section chrona-login"><div class="auth-shell"><section class="auth-copy"><a class="chrona-wordmark" href="${PLATFORM_ENTRY?location.pathname:tenantPublicUrl(SHOP_SLUG||"")}"><span>C</span> CHRONA</a><div><div class="eyebrow">ACESSO SEGURO</div><h1>Seu negócio,<br>no ritmo certo.</h1><p>Agenda, clientes e operação reunidos em um painel simples.</p></div><small>Ambiente protegido pela Chrona</small></section><section class="panel auth-card"><div class="eyebrow">${PLATFORM_ENTRY?"SUPER ADMIN":"PAINEL DA EMPRESA"}</div><h2>${title}</h2><p class="muted">${description}</p>${notice}<form id="login-form"><label class="field"><span>E-mail</span><input name="email" type="email" value="${esc(rememberedLoginEmail)}" autocomplete="username" required></label><label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" required></label><button type="button" class="btn btn-ghost auth-forgot" data-forgot>Esqueci minha senha</button><div class="modal-actions"><button type="button" class="btn btn-outline" data-public>Voltar</button><button class="btn btn-dark" type="submit">Entrar no painel</button></div></form></section></div></main>`;
 }
 function passwordPage(){
   const company=SHOP_SLUG?db.settings.shop:"Chrona";
@@ -512,7 +553,7 @@ function platformPage(){
   const rows=platformTenants.map((tenant)=>{
     const ready=tenant.users>0&&tenant.services>0&&tenant.professionals>0;
     const missing=[tenant.users?null:"acesso",tenant.services?null:"serviços",tenant.professionals?null:"profissionais"].filter(Boolean).join(", ");
-    return `<tr><td><div class="tenant-cell"><span class="tenant-dot" style="background:${esc(tenant.shop.primary_color||"#6d5dfb")}"></span><span><b>${esc(tenant.shop.name)}</b><br><small class="muted">/${esc(tenant.shop.slug)}</small></span></div></td><td>${esc(tenant.shop.business_type||"services")}</td><td>${esc(tenant.subscription?.plan||"—")}</td><td><span class="badge ${tenant.subscription?.status==="suspended"?"red":"green"}">${esc(tenant.subscription?.status||"—")}</span></td><td><span class="badge ${ready?"green":""}">${ready?"Pronto":`Falta ${esc(missing)}`}</span></td><td>${tenant.appointments}</td><td><div class="row-actions"><a class="btn btn-outline" href="?tenant=${encodeURIComponent(tenant.shop.slug)}#admin">Verificar painel</a><a class="btn btn-ghost" target="_blank" rel="noopener" href="?tenant=${encodeURIComponent(tenant.shop.slug)}">Abrir agenda</a>${tenant.users?"":`<button class="btn btn-outline" data-owner-tenant="${tenant.shop.id}">Convidar responsável</button>`}<button class="btn btn-ghost" data-platform-status="${tenant.shop.id}" data-next-status="${tenant.subscription?.status==="suspended"?"active":"suspended"}">${tenant.subscription?.status==="suspended"?"Ativar":"Suspender"}</button></div></td></tr>`;
+    return `<tr><td><div class="tenant-cell"><span class="tenant-dot" style="background:${esc(tenant.shop.primary_color||"#6d5dfb")}"></span><span><b>${esc(tenant.shop.name)}</b><br><small class="muted">/${esc(tenant.shop.slug)}</small></span></div></td><td>${esc(tenant.shop.business_type||"services")}</td><td>${esc(tenant.subscription?.plan||"—")}</td><td><span class="badge ${tenant.subscription?.status==="suspended"?"red":"green"}">${esc(tenant.subscription?.status||"—")}</span></td><td><span class="badge ${ready?"green":""}">${ready?"Pronto":`Falta ${esc(missing)}`}</span></td><td>${tenant.appointments}</td><td><div class="row-actions"><a class="btn btn-outline" href="${tenantPublicUrl(tenant.shop.slug,"#admin")}">Verificar painel</a><a class="btn btn-ghost" target="_blank" rel="noopener" href="${tenantPublicUrl(tenant.shop.slug)}">Abrir agenda</a>${tenant.users?"":`<button class="btn btn-outline" data-owner-tenant="${tenant.shop.id}">Convidar responsável</button>`}<button class="btn btn-ghost" data-platform-status="${tenant.shop.id}" data-next-status="${tenant.subscription?.status==="suspended"?"active":"suspended"}">${tenant.subscription?.status==="suspended"?"Ativar":"Suspender"}</button></div></td></tr>`;
   }).join("");
   return `<div class="admin chrona-platform"><main class="admin-main platform-main">
     <header class="admin-header platform-header"><div><div class="chrona-wordmark compact"><span>C</span> CHRONA</div><p class="muted">Controle central da operação multi-tenant</p></div><div class="header-actions"><button class="btn btn-outline" data-logout>Sair</button><button class="btn btn-dark" data-new-tenant>+ Nova empresa</button></div></header>
@@ -555,7 +596,7 @@ function openTenantOwnerForm(tenant){
 }
 function showOnboardingSuccess(result){
   const slug=result?.tenant?.slug||"";
-  const publicUrl=`${location.origin}${location.pathname}?tenant=${encodeURIComponent(slug)}`;
+  const publicUrl=tenantPublicUrl(slug);
   const direction=result?.tenant?.visualDirection;
   document.querySelector("#onboarding-success")?.remove();
   document.body.insertAdjacentHTML("beforeend",`<div class="modal onboarding-modal" id="onboarding-success"><div class="modal-card success-card"><div class="success-mark">✓</div><div class="eyebrow">EMPRESA PREPARADA</div><h2>Convite enviado</h2><p>Enviamos o primeiro acesso para <b>${esc(result?.owner?.email||"")}</b>. Ao criar a senha, o responsável será levado ao login desta empresa.</p>${direction?`<div class="direction-result"><small>DIREÇÃO CRIADA PELA CHRONA</small><b>${directionLabel(direction)}</b><span>Tipografia e composição definidas a partir das duas cores.</span></div>`:""}<div class="link-preview"><small>Link público</small><b>${esc(publicUrl)}</b></div><div class="modal-actions"><button class="btn btn-outline" data-success-close>Fechar</button><a class="btn btn-dark" target="_blank" rel="noopener" href="${publicUrl}">Abrir agenda</a></div></div></div>`);
@@ -599,8 +640,17 @@ function bookingModal() {
       "Tudo certo!",
     ];
   let body = "";
-  if (booking.step === 0)
-    body = `<div>${booking.adminMode ? `<div class="field" style="margin-bottom:22px"><span>Selecionar cliente cadastrado</span><div style="display:flex;gap:10px"><select id="admin-client" style="flex:1"><option value="">Escolha pelo nome ou WhatsApp</option>${db.clients.map((c) => `<option value="${c.id}" ${booking.clientId === c.id ? "selected" : ""}>${c.name} · ${c.phone}</option>`).join("")}</select><button class="btn btn-dark" type="button" data-use-client>Usar cliente</button></div></div><div class="eyebrow" style="margin:20px 0">OU CADASTRAR NOVO</div>` : '<p class="muted" style="margin-top:0">Informe seu WhatsApp. Nas próximas visitas, seu cadastro será reconhecido sem criar duplicatas.</p>'}<div class="form-grid"><label class="field"><span>WhatsApp *</span><input id="book-phone" inputmode="tel" autocomplete="tel" value="${booking.phone}" placeholder="(62) 99999-9999"></label><div class="field"><span>&nbsp;</span><button class="btn btn-outline" type="button" data-find-client>Continuar</button></div>${booking.lookupDone ? (booking.clientId ? `<div class="field full"><div class="summary"><span>Bem-vindo novamente, <b>${esc(booking.name)}</b></span><span class="badge green">Cadastro encontrado</span></div></div>` : `<label class="field"><span>Nome completo *</span><input id="book-name" autocomplete="name" value="${esc(booking.name)}" placeholder="Seu nome"></label><label class="field"><span>Data de nascimento</span><input id="book-birth" type="date" value="${booking.birth || ""}"></label>`) : ""}<label class="field full"><span>Observações</span><input id="book-notes" value="${esc(booking.notes)}" placeholder="Opcional"></label><label class="field full"><span><input id="book-optin" type="checkbox" ${booking.optIn ? "checked" : ""}> Aceito receber lembretes e comunicações do estabelecimento pelo WhatsApp.</span></label></div></div>`;
+  if (booking.step === 0) {
+    const adminChooser=booking.adminMode?`<div class="field" style="margin-bottom:22px"><span>Selecionar cliente cadastrado</span><div style="display:flex;gap:10px"><select id="admin-client" style="flex:1"><option value="">Escolha pelo nome ou WhatsApp</option>${db.clients.map((c)=>`<option value="${c.id}" ${booking.clientId===c.id?"selected":""}>${c.name} · ${c.phone}</option>`).join("")}</select><button class="btn btn-dark" type="button" data-use-client>Usar cliente</button></div></div><div class="eyebrow" style="margin:20px 0">OU CADASTRAR NOVO</div>`:"";
+    const phoneField=`<label class="field"><span>WhatsApp *</span><input id="book-phone" inputmode="tel" autocomplete="tel" value="${booking.phone}" placeholder="(62) 99999-9999" ${booking.authMode==="otp"&&booking.authStage!=="phone"?"readonly":""}></label>`;
+    let identityFields="";
+    if(booking.authMode==="otp"&&booking.authStage==="code") identityFields=`<label class="field"><span>Código recebido *</span><input id="book-otp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000"></label><div class="field"><span>&nbsp;</span><button class="btn btn-dark" type="button" data-verify-customer-code>Confirmar código</button></div><div class="field full customer-auth-note"><b>${esc(db.settings.shop)}</b><span>Enviamos o código pelo WhatsApp. Sua conta é protegida pela Chrona e funciona nas empresas que usam a plataforma.</span></div>`;
+    else if(booking.authMode==="otp"&&booking.authStage==="profile") identityFields=`<label class="field"><span>Nome completo *</span><input id="book-name" autocomplete="name" value="${esc(booking.name)}" placeholder="Seu nome"></label><label class="field"><span>Data de nascimento</span><input id="book-birth" type="date" value="${booking.birth||""}"></label><label class="field full consent-field"><span><input id="book-terms" type="checkbox"> Li e aceito os Termos de Uso da Chrona.</span></label><label class="field full consent-field"><span><input id="book-privacy" type="checkbox"> Li e aceito a Política de Privacidade da Chrona.</span></label><label class="field full consent-field"><span><input id="book-optin" type="checkbox" ${booking.optIn?"checked":""}> Quero receber lembretes e comunicações de ${esc(db.settings.shop)} pelo WhatsApp.</span><small>Opcional e separado do acesso à sua conta.</small></label><div class="field full"><button class="btn btn-dark" type="button" data-complete-customer>Salvar e continuar</button></div>`;
+    else if(booking.lookupDone&&booking.clientId) identityFields=`<div class="field full"><div class="summary"><span>Bem-vindo novamente, <b>${esc(booking.name)}</b></span><span class="badge green">Identidade confirmada</span></div></div>`;
+    else if(booking.lookupDone) identityFields=`<label class="field"><span>Nome completo *</span><input id="book-name" autocomplete="name" value="${esc(booking.name)}" placeholder="Seu nome"></label><label class="field"><span>Data de nascimento</span><input id="book-birth" type="date" value="${booking.birth||""}"></label>`;
+    const continueButton=booking.authMode==="otp"&&booking.authStage!=="phone"?"":`<div class="field"><span>&nbsp;</span><button class="btn btn-outline" type="button" data-find-client>Continuar</button></div>`;
+    body=`<div>${adminChooser}${booking.adminMode?"":'<p class="muted" style="margin-top:0">Seu WhatsApp identifica sua conta Chrona. O histórico e o relacionamento continuam separados em cada empresa.</p>'}<div class="form-grid">${phoneField}${continueButton}${identityFields}<label class="field full"><span>Observações</span><input id="book-notes" value="${esc(booking.notes)}" placeholder="Opcional"></label>${booking.authMode==="legacy"?`<label class="field full"><span><input id="book-optin" type="checkbox" ${booking.optIn?"checked":""}> Aceito receber lembretes e comunicações do estabelecimento pelo WhatsApp.</span></label>`:""}</div></div>`;
+  }
   if (booking.step === 1)
     body = `<div class="choice-grid">${db.services
       .filter((s) => s.active)
@@ -690,7 +740,7 @@ async function persistSiteConfig(publish){
 function adminPage() {
   const logo=db.settings.logo?`<img class="brand-logo" src="${esc(db.settings.logo)}" alt="Logo ${esc(db.settings.shop)}">`:`<span class="brand-logo logo-fallback">${initials(db.settings.shop)}</span>`;
   const supportBanner=platformSupportMode?`<div class="support-mode"><span><i></i><b>Modo de verificação Chrona</b><small>Você está administrando ${esc(db.settings.shop)} com a conta Super Admin.</small></span><button class="btn btn-outline" data-use-platform>Voltar à plataforma</button></div>`:"";
-  return `<div class="admin"><div class="admin-shell"><aside class="sidebar"><div class="brand">${logo}<div>${db.settings.shop}<small>GESTÃO CHRONA</small></div></div><nav class="nav">${nav.map((n) => `<button class="${adminTab === n[0] ? "active" : ""}" data-tab="${n[0]}">${n[1]}</button>`).join("")}<button data-public>↗ Página pública</button>${platformSupportMode?'<button data-use-platform>← Super Admin</button>':""}<button data-logout>Sair</button></nav></aside><main class="admin-main">${supportBanner}<header class="admin-header"><div><div class="eyebrow">${db.settings.shop} · CHRONA</div><h1>${nav.find((n) => n[0] === adminTab)[1]}</h1></div>${adminTab==="site"?`<a class="btn btn-outline" target="_blank" rel="noopener" href="?tenant=${encodeURIComponent(currentShop.slug)}">Ver site publicado</a>`:'<button class="btn btn-dark" data-quick>+ Novo</button>'}</header>${adminContent()}</main></div><nav class="mobile-nav">${nav.map((n) => `<button class="${adminTab === n[0] ? "active" : ""}" data-tab="${n[0]}">${n[1]}</button>`).join("")}</nav></div>`;
+  return `<div class="admin"><div class="admin-shell"><aside class="sidebar"><div class="brand">${logo}<div>${db.settings.shop}<small>GESTÃO CHRONA</small></div></div><nav class="nav">${nav.map((n) => `<button class="${adminTab === n[0] ? "active" : ""}" data-tab="${n[0]}">${n[1]}</button>`).join("")}<button data-public>↗ Página pública</button>${platformSupportMode?'<button data-use-platform>← Super Admin</button>':""}<button data-logout>Sair</button></nav></aside><main class="admin-main">${supportBanner}<header class="admin-header"><div><div class="eyebrow">${db.settings.shop} · CHRONA</div><h1>${nav.find((n) => n[0] === adminTab)[1]}</h1></div>${adminTab==="site"?`<a class="btn btn-outline" target="_blank" rel="noopener" href="${tenantPublicUrl(currentShop.slug)}">Ver site publicado</a>`:'<button class="btn btn-dark" data-quick>+ Novo</button>'}</header>${adminContent()}</main></div><nav class="mobile-nav">${nav.map((n) => `<button class="${adminTab === n[0] ? "active" : ""}" data-tab="${n[0]}">${n[1]}</button>`).join("")}</nav></div>`;
 }
 function crmContent(){
   const pipeline=currentPipeline();
@@ -806,7 +856,7 @@ function adminContent() {
     return `<div class="metrics"><div class="metric"><small>Conexão Meta</small><b class="${connected?"":"danger"}">${connected?"Ativa":"Pendente"}</b></div><div class="metric"><small>Responsável</small><b class="${ownerReady?"":"danger"}">${ownerReady?"Pronto":"Pendente"}</b></div><div class="metric"><small>Clientes elegíveis</small><b>${eligibleClients}</b></div><div class="metric"><small>Fila / enviadas / falhas</small><b>${queued} / ${sent} / <span class="${failed?"danger":""}">${failed}</span></b></div></div><div class="automation-readiness"><b>Base Meta universal preparada</b><span>Confirmação de horário · 15 min antes · aniversário · retorno em 20 dias · agenda pessoal · vencimento de plano para o admin Chrona.</span></div><div class="split"><section class="panel"><div class="toolbar"><div><h3 style="margin:0">Destinatário responsável</h3><small class="muted">Número que recebe lembretes internos da empresa.</small></div><span class="badge ${ownerReady?"green":""}">${ownerReady?"Elegível":"Configurar"}</span></div>${ownerForm}</section><section class="panel"><div class="toolbar"><div><h3 style="margin:0">Agenda pessoal</h3><small class="muted">Avisos pontuais ou repetidos, como a cada 2 dias.</small></div>${canManageTenant()?'<button class="btn btn-dark" data-add-personal>+ Lembrete</button>':""}</div><div class="list-cards">${personalCards}</div></section></div><div class="split automation-lower"><section class="panel"><div class="toolbar"><div><h3 style="margin:0">Regras de lembrete</h3><small class="muted">Modelos replicados automaticamente para cada empresa.</small></div><span class="badge ${currentSubscription?.plan==="pro"?"green":""}">${currentSubscription?.plan==="pro"?"Plano Pro":"Recurso Pro"}</span></div><div class="list-cards">${ruleCards}</div><div class="empty">As regras continuam desligadas até vincularmos os templates aprovados pela Meta.</div></section><section class="panel"><div class="toolbar"><div><h3 style="margin:0">WhatsApp oficial</h3><small class="muted">Meta Cloud API ${esc(whatsappConnection?.graph_api_version||"v26.0")}</small></div><span class="badge ${connected?"green":"red"}">${connected?"Conectado":"Amanhã"}</span></div>${connected?`<div class="list-card"><span><b>${esc(whatsappConnection.verified_name||db.settings.shop)}</b><br><small class="muted">${esc(whatsappConnection.display_phone_number||whatsappConnection.phone_number_id)}${whatsappConnection.quality_rating?` · qualidade ${esc(whatsappConnection.quality_rating)}`:""}</small></span><span class="badge green">Verificado</span></div>`:"<div class=\"empty\">A estrutura está pronta. A credencial e os IDs da Meta serão ligados na próxima etapa.</div>"}${connectionForm}</section></div>`;
   }
   if(adminTab === "profissionais") return `<section class="panel"><div class="toolbar"><span class="muted">Equipe e disponibilidade para agendamentos</span><button class="btn btn-dark" data-add-professional>+ Profissional</button></div><div class="list-cards">${PEOPLE.map(p=>`<div class="list-card"><span><b>${p.name}</b><br><small class="muted">${p.phone||"Sem telefone"}</small></span><span><button class="btn btn-ghost" data-edit-professional="${p.id}">Editar</button><button class="badge ${p.active?"green":"red"}" data-toggle-professional="${p.id}">${p.active?"Ativo":"Inativo"}</button></span></div>`).join("")||'<div class="empty">Nenhum profissional cadastrado.</div>'}</div></section>`;
-  return `<section class="panel"><div class="toolbar"><div><div class="eyebrow">IDENTIDADE DA EMPRESA</div><h3 style="margin:5px 0 0">Página pública e operação</h3></div><a class="btn btn-outline" target="_blank" rel="noopener" href="?tenant=${encodeURIComponent(currentShop.slug)}">Visualizar página</a></div><div class="form-grid"><label class="field"><span>Nome da empresa</span><input id="set-shop" value="${esc(db.settings.shop)}"></label><label class="field"><span>WhatsApp</span><input id="set-phone" value="${esc(db.settings.phone)}"></label><label class="field"><span>Instagram</span><input id="set-instagram" value="${esc(db.settings.instagram)}" placeholder="@empresa"></label><label class="field"><span>Link da logo</span><input id="set-logo" value="${esc(db.settings.logo)}" placeholder="https://..."></label><label class="field full"><span>Endereço</span><input id="set-address" value="${esc(db.settings.address)}"></label><label class="field full"><span>Descrição da página pública</span><textarea id="set-description" rows="3">${esc(db.settings.description)}</textarea></label><label class="color-field"><input id="set-primary-color" type="color" value="${esc(db.settings.primaryColor)}"><span><b>Cor predominante</b><small>Marca, superfícies e ações</small></span></label><label class="color-field"><input id="set-secondary-color" type="color" value="${esc(db.settings.secondaryColor)}"><span><b>Cor da tinta</b><small>Textos, traços e contraste</small></span></label><div class="direction-config-note"><small>DIREÇÃO AUTOMÁTICA</small><b>${directionLabel(db.settings.visualDirection)}</b><span>A fonte e a composição acompanham as duas cores.</span></div><label class="field"><span>Abertura</span><input id="set-open" type="time" value="${db.settings.open}"></label><label class="field"><span>Fechamento</span><input id="set-close" type="time" value="${db.settings.close}"></label><label class="field"><span>Início do intervalo</span><input id="set-break-start" type="time" value="${db.settings.breakStart}"></label><label class="field"><span>Fim do intervalo</span><input id="set-break-end" type="time" value="${db.settings.breakEnd}"></label><label class="field full"><span>Saudação do WhatsApp</span><textarea id="set-greeting" rows="4">${esc(db.settings.greeting)}</textarea></label></div><div class="modal-actions"><span></span><button class="btn btn-dark" data-save-settings>Salvar configurações</button></div></section>`;
+  return `<section class="panel"><div class="toolbar"><div><div class="eyebrow">IDENTIDADE DA EMPRESA</div><h3 style="margin:5px 0 0">Página pública e operação</h3></div><a class="btn btn-outline" target="_blank" rel="noopener" href="${tenantPublicUrl(currentShop.slug)}">Visualizar página</a></div><div class="form-grid"><label class="field"><span>Nome da empresa</span><input id="set-shop" value="${esc(db.settings.shop)}"></label><label class="field"><span>WhatsApp</span><input id="set-phone" value="${esc(db.settings.phone)}"></label><label class="field"><span>Instagram</span><input id="set-instagram" value="${esc(db.settings.instagram)}" placeholder="@empresa"></label><label class="field"><span>Link da logo</span><input id="set-logo" value="${esc(db.settings.logo)}" placeholder="https://..."></label><label class="field full"><span>Endereço</span><input id="set-address" value="${esc(db.settings.address)}"></label><label class="field full"><span>Descrição da página pública</span><textarea id="set-description" rows="3">${esc(db.settings.description)}</textarea></label><label class="color-field"><input id="set-primary-color" type="color" value="${esc(db.settings.primaryColor)}"><span><b>Cor predominante</b><small>Marca, superfícies e ações</small></span></label><label class="color-field"><input id="set-secondary-color" type="color" value="${esc(db.settings.secondaryColor)}"><span><b>Cor da tinta</b><small>Textos, traços e contraste</small></span></label><div class="direction-config-note"><small>DIREÇÃO AUTOMÁTICA</small><b>${directionLabel(db.settings.visualDirection)}</b><span>A fonte e a composição acompanham as duas cores.</span></div><label class="field"><span>Abertura</span><input id="set-open" type="time" value="${db.settings.open}"></label><label class="field"><span>Fechamento</span><input id="set-close" type="time" value="${db.settings.close}"></label><label class="field"><span>Início do intervalo</span><input id="set-break-start" type="time" value="${db.settings.breakStart}"></label><label class="field"><span>Fim do intervalo</span><input id="set-break-end" type="time" value="${db.settings.breakEnd}"></label><label class="field full"><span>Saudação do WhatsApp</span><textarea id="set-greeting" rows="4">${esc(db.settings.greeting)}</textarea></label></div><div class="modal-actions"><span></span><button class="btn btn-dark" data-save-settings>Salvar configurações</button></div></section>`;
 }
 function reminder(c,msg,detail="",badgeClass="") {
   const digits=c.phone.replace(/\D/g,"");
@@ -862,7 +912,7 @@ function bindSiteBuilder(){
 }
 function bind() {
   bindSiteBuilder();
-  document.querySelector("#password-form")?.addEventListener("submit",async event=>{event.preventDefault();const form=new FormData(event.currentTarget),password=form.get("password"),confirm=form.get("confirm"),button=event.currentTarget.querySelector("button[type=submit]");if(password!==confirm)return toast("As senhas precisam ser iguais");button.disabled=true;button.textContent="Salvando…";try{const user=await updatePassword(password);const tenant=SHOP_SLUG||user?.user_metadata?.tenant_slug||"";sessionStorage.removeItem("chrona-session");sessionStorage.setItem("chrona-login-email",user?.email||AUTH_CALLBACK.get("email")||"");sessionStorage.setItem("chrona-login-notice",`Agora entre para acessar ${tenant?db.settings.shop:"a Chrona"}.`);const destination=tenant?`${location.pathname}?tenant=${encodeURIComponent(tenant)}#admin`:`${location.pathname}?platform=chrona#admin`;location.replace(destination);}catch(error){toast(error.message);button.disabled=false;button.textContent="Criar senha e continuar";}});
+  document.querySelector("#password-form")?.addEventListener("submit",async event=>{event.preventDefault();const form=new FormData(event.currentTarget),password=form.get("password"),confirm=form.get("confirm"),button=event.currentTarget.querySelector("button[type=submit]");if(password!==confirm)return toast("As senhas precisam ser iguais");button.disabled=true;button.textContent="Salvando…";try{const user=await updatePassword(password);const tenant=SHOP_SLUG||user?.user_metadata?.tenant_slug||"";sessionStorage.removeItem("chrona-session");sessionStorage.setItem("chrona-login-email",user?.email||AUTH_CALLBACK.get("email")||"");sessionStorage.setItem("chrona-login-notice",`Agora entre para acessar ${tenant?db.settings.shop:"a Chrona"}.`);const destination=tenant?tenantPublicUrl(tenant,"#admin"):`${location.pathname}?platform=chrona#admin`;location.replace(destination);}catch(error){toast(error.message);button.disabled=false;button.textContent="Criar senha e continuar";}});
   document.querySelector("#login-form")?.addEventListener("submit",async(event)=>{event.preventDefault();const button=event.currentTarget.querySelector("button[type=submit]");button.disabled=true;button.textContent="Entrando…";try{const form=new FormData(event.currentTarget);sessionStorage.setItem("chrona-login-email",String(form.get("email")||""));await signIn(form.get("email"),form.get("password"));await loadAdminData();loginNotice="";render();toast("Acesso autorizado");}catch(error){toast(error.message);button.disabled=false;button.textContent="Entrar no painel";}});
   document.querySelector("[data-forgot]")?.addEventListener("click",async()=>{const email=document.querySelector('#login-form [name=email]').value.trim();if(!email)return toast("Digite seu e-mail primeiro");try{await requestPasswordReset(email);toast("Se o e-mail estiver cadastrado, o link será enviado");}catch(error){toast(error.message);}});
   document.querySelector("[data-logout]")?.addEventListener("click",()=>{authSession=null;adminLoaded=false;platformSupportMode=false;currentProfile=currentShop=currentSubscription=platformNotificationSettings=null;sessionStorage.removeItem("chrona-session");render();});
@@ -896,10 +946,15 @@ function bind() {
           phone: saved?.phone || "",
           birth: saved?.birth || "",
           notes: "",
-          clientId: saved?.phone ? "local" : "",
-          lookupDone: Boolean(saved?.phone && saved?.name),
+          clientId: "",
+          lookupDone: false,
           adminMode: false,
           optIn: false,
+          authMode: "legacy",
+          authStage: "phone",
+          authRequestId: "",
+          termsVersion: "",
+          privacyVersion: "",
         };
         document.body.insertAdjacentHTML("beforeend", bookingModal());
         bindBooking();
@@ -909,7 +964,7 @@ function bind() {
     location.hash = "admin";
   });
   document.querySelector("[data-public]")?.addEventListener("click", () => {
-    location.href = PLATFORM_ENTRY ? location.pathname : `${location.pathname}?tenant=${currentShop?.slug||SHOP_SLUG}`;
+    location.href = PLATFORM_ENTRY ? location.pathname : tenantPublicUrl(currentShop?.slug||SHOP_SLUG);
   });
   document.querySelectorAll("[data-tab]").forEach(
     (x) =>
@@ -995,6 +1050,11 @@ function bind() {
       lookupDone: false,
       adminMode: true,
       optIn: false,
+      authMode: "legacy",
+      authStage: "phone",
+      authRequestId: "",
+      termsVersion: "",
+      privacyVersion: "",
     };
     document.body.insertAdjacentHTML("beforeend", bookingModal());
     bindBooking();
@@ -1123,11 +1183,40 @@ function bindBooking() {
   modal.querySelector("[data-close]").onclick = () => modal.remove();
   modal.querySelector("#book-phone")?.addEventListener("input", (event) => {
     const phone = event.target.value.replace(/\D/g, "");
-    if (phone !== booking.phone) { booking.lookupDone=false; booking.clientId=""; }
+    if (phone !== booking.phone) { booking.lookupDone=false; booking.clientId=""; booking.authMode="legacy"; booking.authStage="phone"; }
   });
   modal.querySelector("[data-find-client]")?.addEventListener("click", async () => {
     const phone = modal.querySelector("#book-phone").value.replace(/\D/g, "");
     if (phone.length < 10) return toast("Digite um WhatsApp válido");
+    if(!booking.adminMode){
+      try{
+        const preparation=await rpc("prepare_customer_phone_auth",{shop_slug:SHOP_SLUG,client_phone:phone,requested_intent:"booking"},null);
+        if(preparation?.ready){
+          booking.phone=phone;
+          booking.authMode="otp";
+          booking.authRequestId=preparation.requestId||"";
+          booking.termsVersion=preparation.termsVersion||"";
+          booking.privacyVersion=preparation.privacyVersion||"";
+          if(customerSession?.access_token){
+            try{
+              const context=await rpc("get_customer_context",{shop_slug:SHOP_SLUG},customerSession.access_token);
+              if(context?.authenticated){
+                booking.name=context.name||"";
+                booking.clientId=context.clientId||"";
+                booking.lookupDone=Boolean(context.profileComplete);
+                booking.authStage=context.profileComplete?"verified":"profile";
+                refreshModal();
+                return toast(context.profileComplete?"Conta Chrona reconhecida":"Complete seu cadastro nesta empresa");
+              }
+            }catch{ await refreshCustomerSession(); }
+          }
+          await requestCustomerOtp(phone);
+          booking.authStage="code";
+          refreshModal();
+          return toast("Código enviado pelo WhatsApp");
+        }
+      }catch(error){ return toast(error.message); }
+    }
     const localFound = db.clients.find((c) => c.phone.replace(/\D/g, "") === phone);
     let found = localFound;
     if (!found && !booking.adminMode) {
@@ -1146,6 +1235,40 @@ function bindBooking() {
     toast(
       found ? "Cadastro encontrado" : "Primeiro acesso: complete seu cadastro",
     );
+  });
+  modal.querySelector("[data-verify-customer-code]")?.addEventListener("click",async()=>{
+    const code=modal.querySelector("#book-otp")?.value.replace(/\D/g,"")||"";
+    if(code.length<6) return toast("Digite o código recebido");
+    try{
+      await verifyCustomerOtp(booking.phone,code);
+      const context=await rpc("get_customer_context",{shop_slug:SHOP_SLUG},customerSession.access_token);
+      booking.name=context?.name||"";
+      booking.clientId=context?.clientId||"";
+      booking.lookupDone=Boolean(context?.profileComplete);
+      booking.authStage=context?.profileComplete?"verified":"profile";
+      refreshModal();
+      toast(context?.profileComplete?"Identidade confirmada":"Agora precisamos apenas do seu nome");
+    }catch(error){ toast(error.message); }
+  });
+  modal.querySelector("[data-complete-customer]")?.addEventListener("click",async()=>{
+    const name=modal.querySelector("#book-name")?.value.trim()||"";
+    const birth=modal.querySelector("#book-birth")?.value||null;
+    const terms=Boolean(modal.querySelector("#book-terms")?.checked);
+    const privacy=Boolean(modal.querySelector("#book-privacy")?.checked);
+    const marketing=Boolean(modal.querySelector("#book-optin")?.checked);
+    if(name.length<2||!terms||!privacy) return toast("Informe seu nome e confirme os termos e a privacidade");
+    try{
+      const profile=await rpc("complete_customer_profile",{shop_slug:SHOP_SLUG,customer_name:name,accept_terms:terms,accept_privacy:privacy,marketing_whatsapp:marketing,client_birth:birth,browser_user_agent:navigator.userAgent},customerSession?.access_token);
+      booking.name=profile.name;
+      booking.phone=profile.phone;
+      booking.birth=birth||"";
+      booking.optIn=marketing;
+      booking.clientId=profile.clientId;
+      booking.lookupDone=true;
+      booking.authStage="verified";
+      refreshModal();
+      toast("Cadastro desta empresa concluído");
+    }catch(error){ toast(error.message); }
   });
   modal.querySelector("[data-use-client]")?.addEventListener("click", () => {
     const id = modal.querySelector("#admin-client").value;
@@ -1208,7 +1331,7 @@ function bindBooking() {
         .querySelector("#book-phone")
         .value.replace(/\D/g, "");
       if (!booking.lookupDone)
-        return toast("Busque o cadastro pelo WhatsApp primeiro");
+        return toast(booking.authMode==="otp"?"Confirme sua identidade antes de continuar":"Busque o cadastro pelo WhatsApp primeiro");
       booking.name =
         modal.querySelector("#book-name")?.value.trim() || booking.name;
       booking.phone = modal
@@ -1231,7 +1354,7 @@ function bindBooking() {
     if (booking.step === 3) {
       const prof = booking.professional === "any" ? slotProfessionals[booking.time] : booking.professional;
       try {
-        await rpc("create_public_appointment", { shop_slug:SHOP_SLUG, client_name:booking.name, client_phone:booking.phone, client_birth:booking.birth || null, opt_in:booking.optIn, professional:prof, service_ids:booking.serviceIds, appt_date:booking.date, appt_start:booking.time, appt_notes:booking.notes || null });
+        await rpc("create_public_appointment", { shop_slug:SHOP_SLUG, client_name:booking.name, client_phone:booking.phone, client_birth:booking.birth || null, opt_in:booking.optIn, professional:prof, service_ids:booking.serviceIds, appt_date:booking.date, appt_start:booking.time, appt_notes:booking.notes || null },booking.authMode==="otp"?customerSession?.access_token:authSession?.access_token);
         saveBookingProfile();
         if(booking.adminMode) await loadAdminData();
       } catch (error) {

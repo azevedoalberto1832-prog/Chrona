@@ -619,6 +619,19 @@ th {
 .danger {
   color: var(--red);
 }
+.customer-auth-note {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--card) 90%, var(--copper) 10%);
+}
+.customer-auth-note span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
 
 /* Direções de arte calculadas a partir do par predominante + tinta. */
 body[data-direction="editorial"] {
