@@ -32,12 +32,12 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | Matriz universal de notificações | IMPLEMENTADO | Regras/seeds e geração estão nas migrations; regras dependentes de Meta nascem inativas. |
 | Webhook Meta assinado + tracking de status | IMPLEMENTADO | Edge Function/schema existem. Validação operacional real do callback permanece pendente segundo documentação. |
 | Chatbot universal de agendamento | EM IMPLEMENTAÇÃO | Persistência, estados, outbox, webhook e configuração existem, mas `ARCHITECTURE.md` ainda manda implementar o processador da máquina de estados e ativar piloto. |
-| Hostname dedicado Palazzo no frontend | IMPLEMENTADO | Palazzo usa `palazzo.chronasystem.com.br` como URL canônica e os links internos deixam de passar pelo domínio principal; falta confirmar o deploy desta alteração no HTTPS. |
+| Hostname dedicado Palazzo no frontend | PUBLICADO | `chronasystem.com.br` limpa o parâmetro legado e exibe somente a plataforma; Palazzo abre diretamente em `palazzo.chronasystem.com.br`. Links internos, onboarding e retorno ao site usam a URL canônica, conferida no HTTPS após o deploy `60c68d1`. |
 | Biblioteca controlada de landing pages | VALIDADO | Renderer único em `site-engine.js`, quatro templates, oito paletas, cinco pares tipográficos, variantes allowlisted, seções ordenáveis/ocultáveis e preview do Admin. Palazzo usa Luxury e Nayara usa Clean por dados, sem fork por tenant. |
 | Rascunho e publicação do site | VALIDADO | `tenant_site_configs` mantém `draft_config` e `published_config`; leitura pública expõe somente o publicado. RLS permite leitura ao membro e escrita somente a owner/platform admin. |
 | Fontes selecionáveis por cliente | IMPLEMENTADO | Cinco pares curados são selecionáveis no editor; não há CSS arbitrário nem upload de fontes externas. |
 | Mídia pública da landing | VALIDADO | Bucket `tenant-site-media` público para leitura, limitado a JPG de 5 MB; upload autenticado restrito a owner/platform admin e à pasta UUID do tenant. Editor aceita logo, hero, fotos opcionais por serviço e até 12 trabalhos recentes. |
-| Vitrine de trabalhos recentes | IMPLEMENTADO | Editor universal aceita até 12 JPGs por tenant; a seção nasce habilitada, não renderiza vazia, possui card rotativo e carrossel manual/automático a cada 5 s com volta contínua ao início. Falta validação visual com fotos reais após o deploy atual. |
+| Vitrine de trabalhos recentes | PUBLICADO | Editor universal aceita até 12 JPGs por tenant; a seção nasce habilitada, não renderiza vazia, possui card rotativo e carrossel manual/automático a cada 5 s com volta contínua ao início. Banco, renderer e ciclo infinito foram testados; nenhum tenant possui fotos publicadas para um teste visual real de upload nesta revisão. |
 | Subdomínio automático `cliente.chronasystems.com.br` | PLANEJADO | Não encontrada infraestrutura de provisionamento wildcard/subdomínio no repositório atual. |
 
 ## Integrações
@@ -77,7 +77,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 
 ## Última alteração relevante
 
-Em 20/09/2026, as migrations de identidade global, acabamento Palazzo e galeria universal foram aplicadas e registradas. A Palazzo passou a ter hero centralizado, serviços alinhados e quatro diferenciais; a galeria passou a nascer habilitada para tenants atuais e futuros, sem renderizar quando vazia. O envio OTP permanece deliberadamente inativo até a aprovação/configuração do template Meta.
+Em 20/09/2026, o deploy `60c68d1` publicou a separação entre domínio Chrona e subdomínio Palazzo, hero centralizado, serviços alinhados, quatro diferenciais e galeria universal. As migrations relacionadas foram aplicadas e registradas; o ciclo de 5 s com retorno contínuo foi testado. O envio OTP permanece deliberadamente inativo até a aprovação/configuração do template Meta.
 
 ## Próximo incremento recomendado
 
