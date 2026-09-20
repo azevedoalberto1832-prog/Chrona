@@ -10,6 +10,11 @@
     "warm-brown": { name:"Warm Brown", tags:["marrom","quente","barbearia","clássico","tradicional"], tokens:{ background:"#efe6d8",surface:"#faf5ed",primary:"#774b2c",secondary:"#2e2017",accent:"#aa764a",text:"#2e2017",muted:"#77695e",border:"#d4c0aa" } },
     forest: { name:"Forest", tags:["verde","floresta","forest","natural","sóbrio"], tokens:{ background:"#10211b",surface:"#183028",primary:"#94b88c",secondary:"#eef3e8",accent:"#c2a56c",text:"#eef3e8",muted:"#a8b8ae",border:"#345044" } },
     "minimal-white": { name:"Minimal White", tags:["branco","white","clean","minimalista","claro","profissional"], tokens:{ background:"#f7f7f5",surface:"#ffffff",primary:"#171717",secondary:"#282828",accent:"#737373",text:"#171717",muted:"#71716c",border:"#deded9" } },
+    "blush-ink": { name:"Blush Ink", tags:["beleza","rosa","blush","editorial","feminino"], tokens:{ background:"#f8efed",surface:"#fffaf8",primary:"#a74f61",secondary:"#39262b",accent:"#d6969e",text:"#39262b",muted:"#826d72",border:"#e6ced0" } },
+    "pearl-mauve": { name:"Pearl Mauve", tags:["lash","pérola","malva","delicado","feminino"], tokens:{ background:"#fbf8f6",surface:"#ffffff",primary:"#8b6174",secondary:"#342932",accent:"#c8a2ae",text:"#342932",muted:"#7b7076",border:"#eadfe2" } },
+    "sage-spa": { name:"Sage Spa", tags:["estética","spa","sálvia","orgânico","natural"], tokens:{ background:"#f3f1e9",surface:"#fbfaf5",primary:"#66765e",secondary:"#283127",accent:"#b89872",text:"#283127",muted:"#73796f",border:"#d9dccf" } },
+    "wine-champagne": { name:"Wine Champagne", tags:["beleza","vinho","champagne","couture","luxo"], tokens:{ background:"#24191d",surface:"#332329",primary:"#d6b176",secondary:"#fff5eb",accent:"#e4cda9",text:"#fff5eb",muted:"#cbbab9",border:"#5b4148" } },
+    "powder-lilac": { name:"Powder Lilac", tags:["lash","lilás","suave","studio","delicado"], tokens:{ background:"#f5f1f7",surface:"#fffefe",primary:"#78617f",secondary:"#2f2833",accent:"#bca5c3",text:"#2f2833",muted:"#786f7b",border:"#e2d9e5" } },
   };
 
   const fonts = {
@@ -18,6 +23,13 @@
     "classic-barber": { name:"Classic Barber", tags:["barbearia","clássica","tradicional","sofisticada"], heading:'"Playfair Display",serif', body:'"DM Sans",sans-serif', headingWeight:700, tracking:"-.02em" },
     "luxury-serif": { name:"Luxury Serif", tags:["luxo","serif","refinada","elegante"], heading:'"Playfair Display",serif', body:'"Nunito Sans",sans-serif', headingWeight:600, tracking:"-.025em" },
     "clean-professional": { name:"Clean Professional", tags:["clean","profissional","legível","minimalista"], heading:'"DM Sans",sans-serif', body:'"DM Sans",sans-serif', headingWeight:700, tracking:"-.035em" },
+    "bodoni-soft": { name:"Bodoni Soft", tags:["beleza","editorial","sofisticada","contraste"], heading:'"Bodoni Moda",serif', body:'"Manrope",sans-serif', headingWeight:600, tracking:"-.035em" },
+    "italiana-air": { name:"Italiana Air", tags:["lash","delicada","leve","luxo"], heading:'"Italiana",serif', body:'"Montserrat",sans-serif', headingWeight:400, tracking:"-.015em" },
+    "fraunces-organic": { name:"Fraunces Organic", tags:["spa","orgânica","acolhedora","estética"], heading:'"Fraunces",serif', body:'"Work Sans",sans-serif', headingWeight:600, tracking:"-.025em" },
+    "prata-couture": { name:"Prata Couture", tags:["couture","luxo","beleza","editorial"], heading:'"Prata",serif', body:'"Montserrat",sans-serif', headingWeight:400, tracking:"-.02em" },
+    "tenor-studio": { name:"Tenor Studio", tags:["minimalista","delicada","studio","contemporânea"], heading:'"Tenor Sans",sans-serif', body:'"Manrope",sans-serif', headingWeight:400, tracking:"-.02em" },
+    "lora-warm": { name:"Lora Warm", tags:["acolhedora","beleza","serif","humana"], heading:'"Lora",serif', body:'"Nunito Sans",sans-serif', headingWeight:600, tracking:"-.025em" },
+    "marcellus-refined": { name:"Marcellus Refined", tags:["clássica","refinada","estética","elegante"], heading:'"Marcellus",serif', body:'"Karla",sans-serif', headingWeight:400, tracking:"-.015em" },
   };
 
   const templates = {
@@ -25,6 +37,11 @@
     clean: { name:"Clean", tags:["clean","branco","minimalista","leve"], palette:"minimal-white", fontPair:"clean-professional", variants:{ hero:"centered",button:"outline",card:"minimal",services:"list",professionals:"minimal",header:"minimal",footer:"minimal" } },
     modern: { name:"Modern", tags:["moderno","grafite","azul","contemporâneo"], palette:"graphite-blue", fontPair:"modern-sans", variants:{ hero:"full-image",button:"pill",card:"elevated",services:"grid",professionals:"grid",header:"modern",footer:"modern" } },
     classic: { name:"Classic", tags:["clássico","tradicional","sofisticado","barbearia"], palette:"warm-brown", fontPair:"classic-barber", variants:{ hero:"minimal",button:"classic",card:"border",services:"cards",professionals:"horizontal",header:"classic",footer:"classic" } },
+    "blush-editorial": { name:"Blush Editorial", tags:["beleza","estética","rosa","editorial","feminino"], palette:"blush-ink", fontPair:"bodoni-soft", variants:{ hero:"split",button:"classic",card:"border",services:"image-cards",professionals:"horizontal",header:"classic",footer:"minimal" } },
+    "pearl-lash": { name:"Pearl Lash", tags:["lash","cílios","pérola","delicado","feminino"], palette:"pearl-mauve", fontPair:"italiana-air", variants:{ hero:"centered-image",button:"pill",card:"minimal",services:"premium",professionals:"minimal",header:"minimal",footer:"minimal" } },
+    "botanical-spa": { name:"Botanical Spa", tags:["estética","spa","natural","orgânico","feminino"], palette:"sage-spa", fontPair:"fraunces-organic", variants:{ hero:"split",button:"outline",card:"elevated",services:"cards",professionals:"grid",header:"minimal",footer:"minimal" } },
+    "couture-beauty": { name:"Couture Beauty", tags:["beleza","luxo","editorial","vinho","feminino"], palette:"wine-champagne", fontPair:"prata-couture", variants:{ hero:"luxury",button:"luxury",card:"luxury",services:"premium",professionals:"premium",header:"classic",footer:"classic" } },
+    "soft-studio": { name:"Soft Studio", tags:["beleza","lash","lilás","leve","delicado"], palette:"powder-lilac", fontPair:"tenor-studio", variants:{ hero:"minimal",button:"pill",card:"minimal",services:"list",professionals:"horizontal",header:"modern",footer:"minimal" } },
   };
 
   const variants = {
@@ -77,9 +94,14 @@
   function tokens(config) {
     const palette=palettes[config.palette]||palettes[templates[config.template].palette];
     const font=fonts[config.fontPair]||fonts[templates[config.template].fontPair];
-    const radius=config.template==="modern"?"22px":config.template==="clean"?"4px":"0px";
-    const shadow=config.template==="modern"?"0 22px 70px rgba(0,0,0,.22)":config.template==="clean"?"0 12px 34px rgba(0,0,0,.07)":"0 24px 70px rgba(0,0,0,.32)";
+    const soft=["modern","pearl-lash","botanical-spa","soft-studio"].includes(config.template);
+    const radius=soft?"24px":config.template==="clean"?"4px":config.template==="blush-editorial"?"14px":"0px";
+    const shadow=soft?"0 22px 70px rgba(63,42,55,.12)":config.template==="clean"?"0 12px 34px rgba(0,0,0,.07)":"0 24px 70px rgba(0,0,0,.32)";
     return `${Object.entries(palette.tokens).map(([key,value])=>`--site-${key}:${value}`).join(";")};--site-font-heading:${font.heading};--site-font-body:${font.body};--site-heading-weight:${font.headingWeight};--site-heading-tracking:${font.tracking};--site-radius:${radius};--site-shadow:${shadow}`;
+  }
+  function theme(config={}) {
+    const normalized=normalize(config),palette=palettes[normalized.palette],font=fonts[normalized.fontPair];
+    return {template:normalized.template,palette:clone(palette.tokens),font:clone(font)};
   }
   const money = (value) => Number(value||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   function renderSection(id, ctx) {
@@ -130,5 +152,5 @@
       root.querySelectorAll("[data-site-carousel]").forEach((carousel)=>{const count=Number(carousel.dataset.photoCount||0),cards=[...carousel.querySelectorAll("figure")];if(count<2||cards.length<count+1)return;const current=Number(carousel.dataset.carouselIndex||0),next=current+1,target=cards[next];carousel.dataset.carouselIndex=String(next);carousel.scrollTo({left:target.offsetLeft-carousel.offsetLeft,behavior:"smooth"});if(next===count)carouselResetTimer=setTimeout(()=>{carousel.scrollTo({left:0,behavior:"auto"});carousel.dataset.carouselIndex="0";},750);});
     },5000);
   }
-  window.ChronaSite={palettes,fonts,templates,variants,variantNames,sectionNames,defaultSections,defaultContent,preset,normalize,render,search,clone,startRotators};
+  window.ChronaSite={palettes,fonts,templates,variants,variantNames,sectionNames,defaultSections,defaultContent,preset,normalize,theme,render,search,clone,startRotators};
 })();

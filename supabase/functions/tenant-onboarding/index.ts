@@ -1,8 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
 
-const CHRONA_SITE_URL = (Deno.env.get("CHRONA_SITE_URL") ??
-  "https://azevedoalberto1832-prog.github.io/Chrona/").replace(/\/+$/, "/");
 const ALLOWED_ORIGINS = new Set([
   "https://azevedoalberto1832-prog.github.io",
   "https://chronasystem.com.br",
@@ -195,9 +193,7 @@ Deno.serve(async (request: Request) => {
     if (existingOwner) return json(request, { error: "Esta empresa já possui um responsável ativo" }, 409);
   }
 
-  const redirectTo = tenantSlug === "palazzo"
-    ? "https://palazzo.chronasystem.com.br/"
-    : `${CHRONA_SITE_URL}?tenant=${encodeURIComponent(tenantSlug)}`;
+  const redirectTo = `https://${tenantSlug}.chronasystem.com.br/`;
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
     ownerEmail,
     {

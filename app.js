@@ -4,23 +4,21 @@ const PAGE_PARAMS = new URLSearchParams(location.search);
 const PLATFORM_ENTRY = PAGE_PARAMS.has("platform");
 const SUPPORT_SLUG = PLATFORM_ENTRY ? PAGE_PARAMS.get("support") : null;
 const PLATFORM_HOSTS = new Set(["chronasystem.com.br","www.chronasystem.com.br"]);
+const ROOT_DOMAIN = "chronasystem.com.br";
 const HOST_TENANTS = Object.freeze({
   "palazzo-barber.vercel.app": "palazzo",
   "palazzo.chronasystem.com.br": "palazzo",
 });
-const TENANT_PUBLIC_URLS = Object.freeze({
-  palazzo: "https://palazzo.chronasystem.com.br/",
-});
 const CURRENT_HOST = location.hostname.toLowerCase();
-const HOST_TENANT = HOST_TENANTS[CURRENT_HOST] || null;
+const SUBDOMAIN_TENANT = CURRENT_HOST.endsWith(`.${ROOT_DOMAIN}`) ? CURRENT_HOST.slice(0,-(`.${ROOT_DOMAIN}`).length) : null;
+const HOST_TENANT = HOST_TENANTS[CURRENT_HOST] || (SUBDOMAIN_TENANT && SUBDOMAIN_TENANT!=="www" ? SUBDOMAIN_TENANT : null);
 const QUERY_TENANT = PAGE_PARAMS.get("tenant");
 const SHOP_SLUG = HOST_TENANT || (PLATFORM_HOSTS.has(CURRENT_HOST) ? null : QUERY_TENANT) || null;
 const CHRONA_HOME = !SHOP_SLUG && !PLATFORM_ENTRY;
 const tenantPublicUrl = (slug, hash="") => {
-  const canonical=TENANT_PUBLIC_URLS[slug];
-  if(canonical) return `${canonical}${String(hash).replace(/^#?/,"#")}`.replace(/#$/g,"");
-  const base=PLATFORM_HOSTS.has(CURRENT_HOST)?"https://azevedoalberto1832-prog.github.io/Chrona/":location.pathname;
-  return `${base}?tenant=${encodeURIComponent(slug)}${hash}`;
+  const suffix=String(hash).replace(/^#?/,"#").replace(/^#$/,"");
+  if(["file:","http:"].includes(location.protocol) && ["","localhost","127.0.0.1"].includes(CURRENT_HOST)) return `${location.pathname}?tenant=${encodeURIComponent(slug)}${suffix}`;
+  return `https://${encodeURIComponent(slug)}.${ROOT_DOMAIN}/${suffix}`;
 };
 const tenantSupportUrl = (slug) => `${location.pathname}?platform=chrona&support=${encodeURIComponent(slug)}#admin`;
 if((PLATFORM_HOSTS.has(CURRENT_HOST)&&QUERY_TENANT)||(HOST_TENANT&&PAGE_PARAMS.has("tenant"))){
@@ -182,6 +180,16 @@ const esc = (value) => String(value??"").replace(/[&<>"']/g,(char)=>({"&":"&amp;
 const initials = (value) => String(value || "Chrona").trim().split(/\s+/).slice(0,2).map((part)=>part[0]).join("").toUpperCase();
 const slugify = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const canManageTenant = () => ["owner","platform_admin"].includes(currentProfile?.role);
+function applyTenantSiteTheme(config){
+  if(!config||!window.ChronaSite) return;
+  const theme=ChronaSite.theme(config),style=document.body.style;
+  document.body.dataset.siteTemplate=theme.template;
+  Object.entries(theme.palette).forEach(([key,value])=>style.setProperty(`--tenant-site-${key}`,value));
+  style.setProperty("--tenant-site-font-heading",theme.font.heading);
+  style.setProperty("--tenant-site-font-body",theme.font.body);
+  style.setProperty("--tenant-site-heading-weight",theme.font.headingWeight);
+  style.setProperty("--tenant-site-heading-tracking",theme.font.tracking);
+}
 function readableText(hex){
   const value=String(hex||"").replace("#","");
   if(!/^[0-9a-f]{6}$/i.test(value)) return "#ffffff";
@@ -403,6 +411,7 @@ async function loadPublicData() {
     PEOPLE = (payload.professionals || []).map((p) => ({ id:p.id, name:p.name }));
     db.settings = { shop:shop.name, address:shop.address || "Endereço a confirmar", phone:shop.phone || "", open:shop.opening_time?.slice(0,5) || "09:00", close:shop.closing_time?.slice(0,5) || "19:00", breakStart:shop.break_start?.slice(0,5) || "", breakEnd:shop.break_end?.slice(0,5) || "", greeting:shop.whatsapp_message || "Olá! Agende seu horário pela Chrona.", instagram:shop.instagram || "", logo:shop.logo_url || "", description:shop.public_description || "Escolha o serviço, o profissional e o melhor horário para você.", primaryColor:shop.primary_color || "#6d5dfb", secondaryColor:shop.secondary_color || "#22c3a6", visualDirection:shop.visual_direction || "studio", timezone:shop.timezone || "America/Sao_Paulo" };
     siteConfigPublished=ChronaSite.normalize(publicSiteConfig||ChronaSite.preset("clean"));
+    applyTenantSiteTheme(siteConfigPublished);
     applyTenantBrand(shop);
     document.title = `${shop.name} | Agendamento`;
     render();
@@ -527,6 +536,7 @@ async function loadAdminData() {
   personalReminders=personalRows||[];
   siteConfigRow=siteRows?.[0]||null;
   siteConfigPublished=ChronaSite.normalize(siteConfigRow?.published_config||ChronaSite.preset("clean"));
+  applyTenantSiteTheme(siteConfigPublished);
   siteConfigDraft=ChronaSite.normalize(siteConfigRow?.draft_config||siteConfigRow?.published_config||siteConfigPublished);
   siteEditorConfig=ChronaSite.clone(siteConfigDraft);
   if(!crmPipelines.some((pipeline)=>pipeline.id===activePipelineId)) activePipelineId=crmPipelines.find((pipeline)=>pipeline.active)?.id||crmPipelines[0]?.id||"";
@@ -718,10 +728,11 @@ function siteBuilderContent(){
   const config=ChronaSite.normalize(siteEditorConfig||siteConfigDraft||ChronaSite.preset("clean"));
   siteEditorConfig=config;
   const c=config.content;
+  const fontChoices=Object.entries(ChronaSite.fonts).map(([id,font])=>`<button type="button" class="site-font-choice ${config.fontPair===id?"active":""}" data-site-font="${esc(id)}" style="--font-heading:${font.heading};--font-body:${font.body}"><b>Aa</b><span>${esc(font.name)}</span><small>Beleza em cada detalhe</small></button>`).join("");
   const sectionRows=config.sections.map((section,index)=>`<div class="site-section-row"><span>${esc(ChronaSite.sectionNames[section.id])}</span><button class="badge ${section.visible?"green":""}" data-site-toggle="${section.id}">${section.visible?"Visível":"Oculta"}</button><button class="btn btn-ghost" data-site-move="${section.id}" data-direction="up" ${index===0?"disabled":""}>↑</button><button class="btn btn-ghost" data-site-move="${section.id}" data-direction="down" ${index===config.sections.length-1?"disabled":""}>↓</button></div>`).join("");
   return `<div class="site-builder"><div class="site-builder-controls">
-    <section class="site-builder-block"><h3>Biblioteca controlada</h3><label class="field"><span>Buscar estilo</span><input id="site-library-search" placeholder="Ex.: dourado, moderno, serif"></label><div class="site-search-results" id="site-search-results"></div></section>
-    <section class="site-builder-block"><h3>Direção visual</h3><label class="field"><span>Template</span><select data-site-field="template">${siteOptions(ChronaSite.templates,config.template)}</select></label><label class="field"><span>Paleta</span><select data-site-field="palette">${siteOptions(ChronaSite.palettes,config.palette)}</select></label><label class="field"><span>Tipografia</span><select data-site-field="fontPair">${siteOptions(ChronaSite.fonts,config.fontPair)}</select></label><div class="form-grid"><label class="field"><span>Hero</span><select data-site-variant="hero">${siteVariantOptions("hero",config.variants.hero)}</select></label><label class="field"><span>Botão</span><select data-site-variant="button">${siteVariantOptions("button",config.variants.button)}</select></label><label class="field"><span>Card</span><select data-site-variant="card">${siteVariantOptions("card",config.variants.card)}</select></label><label class="field"><span>Serviços</span><select data-site-variant="services">${siteVariantOptions("services",config.variants.services)}</select></label><label class="field"><span>Profissionais</span><select data-site-variant="professionals">${siteVariantOptions("professionals",config.variants.professionals)}</select></label></div></section>
+    <section class="site-builder-block"><h3>Direção visual</h3><label class="field"><span>Template</span><select data-site-field="template">${siteOptions(ChronaSite.templates,config.template)}</select></label><label class="field"><span>Paleta</span><select data-site-field="palette">${siteOptions(ChronaSite.palettes,config.palette)}</select></label><div class="form-grid"><label class="field"><span>Hero</span><select data-site-variant="hero">${siteVariantOptions("hero",config.variants.hero)}</select></label><label class="field"><span>Botão</span><select data-site-variant="button">${siteVariantOptions("button",config.variants.button)}</select></label><label class="field"><span>Card</span><select data-site-variant="card">${siteVariantOptions("card",config.variants.card)}</select></label><label class="field"><span>Serviços</span><select data-site-variant="services">${siteVariantOptions("services",config.variants.services)}</select></label><label class="field"><span>Profissionais</span><select data-site-variant="professionals">${siteVariantOptions("professionals",config.variants.professionals)}</select></label></div></section>
+    <section class="site-builder-block"><h3>Fontes do site</h3><p class="muted">A escolha altera títulos, textos, botões e a tela de login do tenant.</p><div class="site-font-grid">${fontChoices}</div></section>
     <section class="site-builder-block"><h3>Marca, hero e contato</h3>${siteMediaPicker("logo",c.logoUrl,"Logo da empresa")}${siteMediaPicker("hero",c.hero.imageUrl,"Foto central do hero")}<label class="field"><span>Sobretítulo</span><input data-site-content="hero.eyebrow" value="${esc(c.hero.eyebrow)}"></label><label class="field"><span>Título</span><input data-site-content="hero.title" value="${esc(c.hero.title)}" placeholder="Usa o nome da empresa se vazio"></label><label class="field"><span>Texto</span><textarea rows="3" data-site-content="hero.subtitle">${esc(c.hero.subtitle)}</textarea></label><label class="field"><span>Botão principal</span><input data-site-content="hero.ctaLabel" value="${esc(c.hero.ctaLabel)}"></label><label class="field"><span>Mensagem do WhatsApp</span><textarea rows="3" data-site-content="whatsappMessage">${esc(c.whatsappMessage)}</textarea></label></section>
     <section class="site-builder-block"><h3>Fotos dos serviços</h3><p class="muted">O card continua normal quando não houver foto.</p><div class="site-service-media-list">${db.services.filter((item)=>item.active).map((service)=>siteMediaPicker(`service:${service.id}`,c.serviceImages?.[service.id],service.name)).join("")||'<div class="empty">Cadastre um serviço para adicionar fotos.</div>'}</div></section>
     <section class="site-builder-block"><h3>Conteúdo institucional</h3><label class="field"><span>Sobretítulo</span><input data-site-content="about.eyebrow" value="${esc(c.about.eyebrow)}"></label><label class="field"><span>Título</span><input data-site-content="about.title" value="${esc(c.about.title)}"></label><label class="field"><span>Texto</span><textarea rows="4" data-site-content="about.body">${esc(c.about.body)}</textarea></label><label class="field"><span>Diferenciais (um por linha)</span><textarea rows="4" data-site-list="differentials">${esc((c.differentials||[]).join("\n"))}</textarea></label><label class="field"><span>Depoimentos (Autor | Texto)</span><textarea rows="4" data-site-testimonials>${esc((c.testimonials||[]).map((item)=>`${item.author} | ${item.quote}`).join("\n"))}</textarea></label></section>
@@ -887,6 +898,7 @@ function bindSiteBuilder(){
     siteEditorConfig[field.dataset.siteField]=field.value;updateSitePreview();
   }));
   document.querySelectorAll("[data-site-variant]").forEach((field)=>field.addEventListener("change",()=>{siteEditorConfig.variants[field.dataset.siteVariant]=field.value;updateSitePreview();}));
+  document.querySelectorAll("[data-site-font]").forEach((button)=>button.addEventListener("click",()=>{siteEditorConfig.fontPair=button.dataset.siteFont;render();}));
   document.querySelectorAll("[data-site-content]").forEach((field)=>field.addEventListener("input",()=>{setSiteContent(field.dataset.siteContent,field.value);updateSitePreview();}));
   document.querySelectorAll("[data-site-list]").forEach((field)=>field.addEventListener("input",()=>{siteEditorConfig.content[field.dataset.siteList]=field.value.split(/\r?\n/).map((item)=>item.trim()).filter(Boolean);updateSitePreview();}));
   document.querySelector("[data-site-testimonials]")?.addEventListener("input",(event)=>{siteEditorConfig.content.testimonials=event.currentTarget.value.split(/\r?\n/).map((line)=>{const [author,...quote]=line.split("|");return {author:(author||"").trim(),quote:quote.join("|").trim()};}).filter((item)=>item.author&&item.quote);updateSitePreview();});
@@ -914,9 +926,6 @@ function bindSiteBuilder(){
   document.querySelectorAll("[data-site-toggle]").forEach((button)=>button.addEventListener("click",()=>{const section=siteEditorConfig.sections.find((item)=>item.id===button.dataset.siteToggle);if(section)section.visible=!section.visible;render();}));
   document.querySelectorAll("[data-site-move]").forEach((button)=>button.addEventListener("click",()=>{const index=siteEditorConfig.sections.findIndex((item)=>item.id===button.dataset.siteMove),target=index+(button.dataset.direction==="up"?-1:1);if(index<0||target<0||target>=siteEditorConfig.sections.length)return;[siteEditorConfig.sections[index],siteEditorConfig.sections[target]]=[siteEditorConfig.sections[target],siteEditorConfig.sections[index]];render();}));
   document.querySelectorAll("[data-site-viewport]").forEach((button)=>button.addEventListener("click",()=>document.querySelector("#site-preview-canvas")?.classList.toggle("mobile",button.dataset.siteViewport==="mobile")));
-  const search=document.querySelector("#site-library-search"),results=document.querySelector("#site-search-results");
-  search?.addEventListener("input",()=>{results.innerHTML=ChronaSite.search(search.value).map((item)=>`<button class="site-search-result" data-site-result-type="${esc(item.type)}" data-site-result-id="${esc(item.id)}"><b>${esc(item.name)}</b><small>${esc(item.type)}</small></button>`).join("")||`<small class="muted">${search.value.trim()?"Nenhum item encontrado.":"Digite para buscar templates, paletas, fontes e variantes."}</small>`;results.querySelectorAll("[data-site-result-type]").forEach((button)=>button.addEventListener("click",()=>{const type=button.dataset.siteResultType,id=button.dataset.siteResultId;if(type==="template")siteEditorConfig=ChronaSite.preset(id,siteEditorConfig);else if(type==="palette"||type==="fontPair")siteEditorConfig[type]=id;else if(ChronaSite.variants[type])siteEditorConfig.variants[type]=id;render();}));});
-  search?.dispatchEvent(new Event("input"));
   document.querySelector("[data-site-save]")?.addEventListener("click",async(event)=>{const button=event.currentTarget;button.disabled=true;button.textContent="Salvando…";try{await persistSiteConfig(false);render();toast("Rascunho salvo. O site publicado não mudou.");}catch(error){toast(error.message);button.disabled=false;button.textContent="Salvar rascunho";}});
   document.querySelector("[data-site-publish]")?.addEventListener("click",async(event)=>{const button=event.currentTarget;button.disabled=true;button.textContent="Publicando…";try{await persistSiteConfig(true);render();toast("Site publicado com sucesso.");}catch(error){toast(error.message);button.disabled=false;button.textContent="Publicar alterações";}});
 }

@@ -1841,6 +1841,25 @@ body[data-tenant="chrona"] .chrona-login .auth-forgot {
   color: var(--chrona-red-dark);
 }
 
+/* Tenant access inherits the published storefront instead of Chrona's platform skin. */
+body:not([data-tenant="chrona"]) .chrona-login {
+  color:var(--tenant-site-text,var(--brand-ink));
+  font-family:var(--tenant-site-font-body,"DM Sans",sans-serif);
+  background:
+    radial-gradient(circle at 12% 10%,color-mix(in srgb,var(--tenant-site-primary,var(--brand-primary)) 16%,transparent),transparent 34%),
+    var(--tenant-site-background,var(--paper));
+}
+body:not([data-tenant="chrona"]) .chrona-login h1,
+body:not([data-tenant="chrona"]) .chrona-login h2 {font-family:var(--tenant-site-font-heading,"Cormorant Garamond",serif);font-weight:var(--tenant-site-heading-weight,600);letter-spacing:var(--tenant-site-heading-tracking,-.03em)}
+body:not([data-tenant="chrona"]) .chrona-login .auth-copy p,
+body:not([data-tenant="chrona"]) .chrona-login .auth-copy>small {color:var(--tenant-site-muted,var(--muted))}
+body:not([data-tenant="chrona"]) .chrona-login .chrona-wordmark span {background:var(--tenant-site-primary,var(--brand-primary));color:var(--tenant-site-background,#fff)}
+body:not([data-tenant="chrona"]) .chrona-login .auth-card {--ink:var(--tenant-site-text,var(--brand-ink));--muted:var(--tenant-site-muted,var(--muted));--line:var(--tenant-site-border,var(--line));--copper:var(--tenant-site-primary,var(--brand-primary));color:var(--ink);background:var(--tenant-site-surface,#fff);border-color:var(--line);border-top:4px solid var(--tenant-site-primary,var(--brand-primary));box-shadow:18px 18px 0 color-mix(in srgb,var(--tenant-site-accent,var(--brand-secondary)) 16%,transparent),0 30px 80px rgba(31,19,27,.16)}
+body:not([data-tenant="chrona"]) .chrona-login .auth-card .field input {color:var(--ink);background:color-mix(in srgb,var(--tenant-site-background,#fff) 78%,#fff);border-color:var(--line)}
+body:not([data-tenant="chrona"])[data-site-template="pearl-lash"] .chrona-login .auth-card {border-radius:160px 160px 28px 28px;padding-top:64px}
+body:not([data-tenant="chrona"])[data-site-template="couture-beauty"] .chrona-login .auth-card {border-radius:0;box-shadow:20px 20px 0 color-mix(in srgb,var(--tenant-site-primary) 18%,transparent)}
+body:not([data-tenant="chrona"])[data-site-template="botanical-spa"] .chrona-login .auth-card {border-radius:72px 18px}
+
 /* Tenant grammar: keep data and interactions shared, vary spatial character. */
 body[data-direction="editorial"] .admin-header,
 body[data-direction="editorial"] .section-head {
