@@ -70,24 +70,26 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 
 ## Problemas conhecidos
 
+- A divergência de migrations identificada em 01/10/2026 foi reconciliada no Git adotando o histórico remoto como canônico, sem `migration repair` e sem reaplicar migrations antigas. `migration list --linked` confirmou alinhamento integral até `20260920040000`.
+- O isolamento entre tenants está presente nos helpers/RLS, mas várias policies `ALL` autorizam qualquer membro do tenant; ainda falta uma matriz granular para `owner`, `receptionist` e `barber`.
+- `profiles.auth_user_id` permanece único por decisão de produto: cada usuário operacional pertence a um tenant, cada tenant pode ter vários profissionais e somente o Super Admin possui acesso transversal.
+- O endurecimento de Storage foi publicado pela migration `20261001120000`: atualização de logo revalida extensão e pasta de destino; mídia do site possui atualização/exclusão restritas a owner do tenant ou Super Admin. As policies resultantes foram verificadas no catálogo remoto.
+- Os advisors remotos apontam 10 RPCs `SECURITY DEFINER` acessíveis publicamente, proteção contra senhas vazadas desativada e policies permissivas duplicadas em `subscriptions`; revisar antes de ampliar o acesso público.
 - `app.js` é um arquivo monolítico grande, concentrando muitas responsabilidades; isso aumenta risco de regressão em alterações não relacionadas.
 - O estado externo da Meta não é demonstrável apenas pelo repositório. Segredos, webhook real e templates aprovados precisam ser verificados no ambiente antes de marcar integração como VALIDADA.
 - O processador completo da máquina de estados do chatbot ainda aparece como próximo passo na arquitetura.
 - A Vercel ainda não possui o domínio curinga `*.chronasystem.com.br`; o código está preparado para hostnames genéricos, mas somente Palazzo está marcado como subdomínio ativo e os demais usam fallback no domínio principal.
 - A autenticação global por WhatsApp OTP permanece desligada: a Meta está conectada para Palazzo, mas não existe template OTP aprovado/configurado nem Auth Hook ativo.
-- O histórico de migrations remoto contém versões/recursos posteriores ausentes no Git (`20260919181325` a `20260919181521`) e timestamps divergentes em migrations de 12/09. As migrations `20260919235925`, `20260920004315` e `20260920012106` foram aplicadas e registradas isoladamente; não reparar nem forçar o restante sem reconciliar a origem dessas versões.
 - README descreve várias capacidades como funcionalidades; agentes devem confirmar cada uma contra código/migrations antes de elevar seu estado para VALIDADO/PUBLICADO.
 - A correção de CORS do onboarding foi publicada e validada por preflight nos domínios Chrona, GitHub Pages e ambiente local. A rota universal de verificação do Super Admin também foi publicada e teve seu carregamento confirmado; falta somente uma nova validação autenticada pelo usuário no painel.
 
 ## Última alteração relevante
 
-Em 01/10/2026, a leitura de “Próximos atendimentos” foi corrigida para excluir registros vencidos ainda marcados como agendados, preservando-os no histórico. A biblioteca visual possui nove templates e doze pares tipográficos. Como o curinga da Vercel ainda não responde, a navegação pública de Nayara e novos tenants usa temporariamente o domínio principal com `?tenant=<slug>`, sem retornar ao GitHub Pages.
+Em 01/10/2026, foi concluída a linha de base das fases 1–5 contra o Supabase remoto. O histórico local de migrations foi reconciliado com a linhagem remota sem `repair` nem reaplicação das versões históricas, e `migration list --linked` confirmou alinhamento integral até `20260920040000`. A auditoria confirmou RLS nas tabelas públicas e isolamento correto dos helpers para o owner Palazzo, além do acesso transversal intencional do Super Admin. A leitura de “Próximos atendimentos” continua corrigida para excluir registros vencidos ainda marcados como agendados, preservando-os no histórico.
 
 ## Próximo incremento recomendado
 
-Antes de iniciar novas funcionalidades, verificar o ambiente real da integração Meta e fechar o ponto já aberto pela arquitetura: segredos/callback/templates e processador da máquina de estados do chatbot, com piloto controlado e evidência funcional antes de marcar como VALIDADO.
-
-O próximo incremento da landing pode adicionar recorte/compressão de imagem no navegador e legendas individuais, sem abrir CSS arbitrário nem atravessar o Chrona Core.
+Aprovar e implementar uma matriz de permissões por papel, seguida de testes negativos automatizados para dois tenants. A primeira migration de endurecimento de Storage já pode ser validada/publicada sobre a linhagem reconciliada. Lifecycle e capabilities devem ser modelados como contratos centrais antes de expandir billing, Tenant Builder ou integrações externas.
 
 ## Não fazer
 

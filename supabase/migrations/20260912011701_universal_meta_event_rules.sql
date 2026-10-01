@@ -183,7 +183,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_pipeline_id uuid;
+  pipeline_id uuid;
 begin
   insert into public.tenant_notification_settings (barbershop_id)
   values (new.id)
@@ -192,10 +192,10 @@ begin
   insert into public.crm_pipelines (barbershop_id, name)
   values (new.id, 'Relacionamento')
   on conflict (barbershop_id, name) do update set name = excluded.name
-  returning id into v_pipeline_id;
+  returning id into pipeline_id;
 
   insert into public.crm_stages (barbershop_id, pipeline_id, name, position, color)
-  select new.id, v_pipeline_id, stage.name, stage.position, stage.color
+  select new.id, pipeline_id, stage.name, stage.position, stage.color
   from (values
     ('Novo contato', 1, '#9caeff'),
     ('Agendamento pendente', 2, '#d8b7bd'),
@@ -734,3 +734,5 @@ revoke all on function public.get_whatsapp_delivery_context(uuid,uuid) from publ
 grant execute on function public.claim_automation_runs(text,integer,integer) to service_role;
 grant execute on function public.finish_automation_run(uuid,uuid,text,text,text,text,integer) to service_role;
 grant execute on function public.get_whatsapp_delivery_context(uuid,uuid) to service_role;
+
+;

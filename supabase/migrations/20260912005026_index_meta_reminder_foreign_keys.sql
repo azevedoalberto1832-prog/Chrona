@@ -9,3 +9,5 @@ create index automation_runs_personal_reminder_fk_idx
 create index personal_reminders_created_by_idx
   on public.personal_reminders (created_by)
   where created_by is not null;
+
+;

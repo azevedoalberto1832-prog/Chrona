@@ -204,3 +204,5 @@ comment on table public.whatsapp_conversations is
   'Estado isolado de cada conversa, identificado por tenant e telefone do cliente.';
 comment on table public.chatbot_outbox is
   'Fila idempotente das respostas livres/interativas do chatbot dentro da janela de atendimento.';
+
+;

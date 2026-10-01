@@ -7,3 +7,5 @@ create index whatsapp_conversations_client_fk_idx
 
 create index platform_support_access_logs_profile_fk_idx
   on public.platform_support_access_logs (profile_id);
+
+;

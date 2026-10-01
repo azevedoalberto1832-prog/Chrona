@@ -166,3 +166,5 @@ $$;
 
 revoke all on function public.generate_due_automation_runs(timestamptz, integer) from public, anon, authenticated;
 grant execute on function public.generate_due_automation_runs(timestamptz, integer) to service_role;
+
+;

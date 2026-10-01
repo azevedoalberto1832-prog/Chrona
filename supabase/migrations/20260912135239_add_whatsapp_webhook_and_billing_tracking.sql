@@ -218,3 +218,5 @@ revoke all on function public.process_meta_whatsapp_event(text,text,text,text,te
   from public,anon,authenticated;
 grant execute on function public.process_meta_whatsapp_event(text,text,text,text,text,text,timestamptz,text,text,text,text,text,boolean,text,jsonb)
   to service_role;
+
+;

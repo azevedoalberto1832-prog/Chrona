@@ -406,7 +406,7 @@ begin
       on shop.id = reminder.barbershop_id and shop.active
     where reminder.active
       and reminder.next_run_at >= reference_time - interval '5 minutes'
-      and reminder.next_run_at <= reference_time + interval '5 minutes'
+      and reminder.next_run_at <= reference_time + make_interval(mins => safe_horizon)
     order by reminder.next_run_at
     for update of reminder skip locked
   loop
@@ -775,3 +775,5 @@ revoke all on function public.get_whatsapp_delivery_context(uuid, uuid) from pub
 grant execute on function public.claim_automation_runs(text, integer, integer) to service_role;
 grant execute on function public.finish_automation_run(uuid, uuid, text, text, text, text, integer) to service_role;
 grant execute on function public.get_whatsapp_delivery_context(uuid, uuid) to service_role;
+
+;

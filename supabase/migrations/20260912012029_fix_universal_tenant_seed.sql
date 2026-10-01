@@ -76,3 +76,5 @@ end;
 $$;
 
 revoke all on function private.seed_tenant_operational_defaults() from public, anon, authenticated;
+
+;

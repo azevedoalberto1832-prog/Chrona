@@ -30,3 +30,5 @@ grant select,insert on public.platform_support_access_logs to authenticated;
 
 comment on table public.platform_support_access_logs is
   'Trilha imutável de entrada do Super Admin em tenants para suporte e verificação.';
+
+;
