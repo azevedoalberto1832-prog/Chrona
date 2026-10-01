@@ -21,6 +21,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | Reconhecimento de cliente recorrente | VALIDADO | Telefone é a identidade canônica por tenant, a busca pública reaproveita o cadastro e `localStorage` guarda apenas conveniência do aparelho; teste remoto confirmou lookup existente e ausência de duplicação de teste. |
 | Identidade global do consumidor Chrona | EM IMPLEMENTAÇÃO | Schema global vinculado ao usuário Auth, relacionamento `clients` por tenant, consentimentos separados, rate limit e Edge Function Meta foram publicados. A ativação por tenant permanece desligada até existir template OTP aprovado e o Auth Hook ser configurado; o fluxo legado continua operacional nesse intervalo. |
 | Área administrativa | IMPLEMENTADO | UI e operações persistentes existem em `app.js`; README lista agenda, clientes, caixa, lembretes, serviços e configurações. |
+| Indicadores de próximos atendimentos | IMPLEMENTADO | Dashboard do tenant e contagem do Super Admin consideram somente `scheduled`/`confirmed` com data e hora futuras no fuso do tenant; registros vencidos permanecem preservados no histórico. |
 | Caixa ligado à conclusão de atendimento | IMPLEMENTADO | Estrutura/RPCs versionadas; preservar idempotência. |
 | Lembrete/retorno por serviço | IMPLEMENTADO | Migrations e arquitetura definem `return_interval_days` e geração de retorno. |
 | Super Admin e gestão de tenants/assinaturas | IMPLEMENTADO | UI, perfis de plataforma, onboarding e controles existem no repositório. A rota explícita `?platform=chrona&support=<slug>` reaproveita a sessão do Super Admin, mantém RLS e registra a entrada em `platform_support_access_logs`. |
@@ -80,7 +81,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 
 ## Última alteração relevante
 
-Em 20/09/2026, a biblioteca visual foi ampliada para nove templates e doze pares tipográficos. Como o curinga da Vercel ainda não responde, a navegação pública de Nayara e novos tenants usa temporariamente o domínio principal com `?tenant=<slug>`, sem retornar ao GitHub Pages. O envio OTP permanece deliberadamente inativo até a aprovação/configuração do template Meta.
+Em 01/10/2026, a leitura de “Próximos atendimentos” foi corrigida para excluir registros vencidos ainda marcados como agendados, preservando-os no histórico. A biblioteca visual possui nove templates e doze pares tipográficos. Como o curinga da Vercel ainda não responde, a navegação pública de Nayara e novos tenants usa temporariamente o domínio principal com `?tenant=<slug>`, sem retornar ao GitHub Pages.
 
 ## Próximo incremento recomendado
 

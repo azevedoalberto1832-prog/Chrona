@@ -87,9 +87,9 @@ async function edge(name,body) {
   return data;
 }
 let PEOPLE = [];
-const tenantDateParts = (date = new Date()) => Object.fromEntries(
+const tenantDateParts = (date = new Date(), timezone = db.settings.timezone || "America/Sao_Paulo") => Object.fromEntries(
   new Intl.DateTimeFormat("en-CA", {
-    timeZone: db.settings.timezone || "America/Sao_Paulo",
+    timeZone: timezone,
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   }).formatToParts(date).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]),
@@ -172,6 +172,14 @@ const isPastSlot = (date, time) => {
   const now = tenantDateParts();
   const currentDate = `${now.year}-${now.month}-${now.day}`;
   return date < currentDate || (date === currentDate && time <= `${now.hour}:${now.minute}`);
+};
+const isUpcomingAppointment = (appointment, timezone = db.settings.timezone || "America/Sao_Paulo") => {
+  const status=String(appointment?.status||"").toLowerCase();
+  if(!["agendado","confirmado","scheduled","confirmed"].includes(status)) return false;
+  const date=appointment?.date||appointment?.appointment_date,time=String(appointment?.time||appointment?.start_time||"").slice(0,5);
+  if(!date||!time) return false;
+  const now=tenantDateParts(new Date(),timezone),currentDate=`${now.year}-${now.month}-${now.day}`;
+  return date>currentDate||(date===currentDate&&time>`${now.hour}:${now.minute}`);
 };
 const money = (v) =>
   Number(v||0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -488,12 +496,12 @@ async function loadAdminData() {
       rest("barbershops?select=*&order=created_at.desc"),
       rest("subscriptions?select=*&order=created_at.desc"),
       rest("profiles?select=id,barbershop_id,role,active"),
-      rest("appointments?select=id,barbershop_id,status"),
+      rest("appointments?select=id,barbershop_id,appointment_date,start_time,status"),
       rest("services?select=id,barbershop_id,active"),
       rest("professionals?select=id,barbershop_id,active"),
       rest(`platform_notification_settings?select=*&profile_id=eq.${currentProfile.id}`)
     ]);
-    platformTenants=(shops||[]).map(shop=>({shop,subscription:(subscriptions||[]).find(s=>s.barbershop_id===shop.id),users:(profilesAll||[]).filter(p=>p.barbershop_id===shop.id&&p.active).length,appointments:(appointments||[]).filter(a=>a.barbershop_id===shop.id).length,services:(servicesAll||[]).filter(s=>s.barbershop_id===shop.id&&s.active).length,professionals:(professionalsAll||[]).filter(p=>p.barbershop_id===shop.id&&p.active).length}));
+    platformTenants=(shops||[]).map(shop=>({shop,subscription:(subscriptions||[]).find(s=>s.barbershop_id===shop.id),users:(profilesAll||[]).filter(p=>p.barbershop_id===shop.id&&p.active).length,appointments:(appointments||[]).filter(a=>a.barbershop_id===shop.id&&isUpcomingAppointment(a,shop.timezone||"America/Sao_Paulo")).length,services:(servicesAll||[]).filter(s=>s.barbershop_id===shop.id&&s.active).length,professionals:(professionalsAll||[]).filter(p=>p.barbershop_id===shop.id&&p.active).length}));
     platformNotificationSettings=platformSettingsRows?.[0]||null;
     adminLoaded=true; return;
   }
@@ -793,15 +801,15 @@ function adminContent() {
     expense = db.cash
       .filter((x) => x.type === "saida")
       .reduce((a, x) => a + x.value, 0);
+  const upcomingAppointments=db.appointments.filter((appointment)=>isUpcomingAppointment(appointment)).sort((a,b)=>`${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
   if(adminTab === "site") return siteBuilderContent();
   if (adminTab === "dashboard")
-    return `<div class="metrics"><div class="metric"><small>Faturamento hoje</small><b>${money(db.cash.filter((x) => x.type === "entrada" && x.date === today()).reduce((a, x) => a + x.value, 0))}</b></div><div class="metric"><small>Saldo do caixa</small><b>${money(revenue - expense)}</b></div><div class="metric"><small>Agendamentos</small><b>${db.appointments.length}</b></div><div class="metric"><small>Ticket médio</small><b>${money(revenue / Math.max(1, db.cash.filter((x) => x.type === "entrada").length))}</b></div></div><div class="split"><section class="panel"><h3>Faturamento — últimos 7 dias</h3><div class="chart">${[42, 68, 55, 82, 64, 92, 73].map((x, i) => `<div class="bar-col"><div class="bar" style="height:${x}%"></div>${["S", "T", "Q", "Q", "S", "S", "D"][i]}</div>`).join("")}</div></section><section class="panel"><h3>Próximos atendimentos</h3>${
-      db.appointments
-        .filter((a) => a.status === "Agendado")
+    return `<div class="metrics"><div class="metric"><small>Faturamento hoje</small><b>${money(db.cash.filter((x) => x.type === "entrada" && x.date === today()).reduce((a, x) => a + x.value, 0))}</b></div><div class="metric"><small>Saldo do caixa</small><b>${money(revenue - expense)}</b></div><div class="metric"><small>Próximos</small><b>${upcomingAppointments.length}</b><span>atendimentos futuros</span></div><div class="metric"><small>Ticket médio</small><b>${money(revenue / Math.max(1, db.cash.filter((x) => x.type === "entrada").length))}</b></div></div><div class="split"><section class="panel"><h3>Faturamento — últimos 7 dias</h3><div class="chart">${[42, 68, 55, 82, 64, 92, 73].map((x, i) => `<div class="bar-col"><div class="bar" style="height:${x}%"></div>${["S", "T", "Q", "Q", "S", "S", "D"][i]}</div>`).join("")}</div></section><section class="panel"><h3>Próximos atendimentos</h3>${
+      upcomingAppointments
         .slice(0, 4)
         .map(
           (a) =>
-            `<div class="list-card"><span><b>${a.time} · ${a.client}</b><br><small class="muted">${service(a.serviceIds[0])?.name}</small></span><span class="badge green">Agendado</span></div>`,
+            `<div class="list-card"><span><b>${dateBR(a.date)} · ${a.time} · ${a.client}</b><br><small class="muted">${service(a.serviceIds[0])?.name}</small></span><span class="badge green">${esc(a.status)}</span></div>`,
         )
         .join("") || '<div class="empty">Nenhum atendimento agendado.</div>'
     }<h3 style="margin-top:24px">Próximos horários livres</h3><div class="slots">${[
