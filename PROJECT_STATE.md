@@ -32,6 +32,9 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | CRM com pipelines/etapas/oportunidades | IMPLEMENTADO | Schema e CRUD constam do código/documentação. |
 | Fila de automações para n8n | IMPLEMENTADO | Edge Function, lease, deduplicação e protocolo documentados. Operação externa contínua não foi comprovada nesta revisão. |
 | Conexão Meta Cloud API por tenant | IMPLEMENTADO | Edge Function e schema existem; token é tratado server-side/Vault. Conexão real de cada tenant não foi comprovada nesta revisão. |
+| Identidade institucional e páginas jurídicas | IMPLEMENTADO | Footer público identifica Chrona Systems, nome empresarial, CNPJ e município; URLs estáveis de Privacidade, Termos e Contato existem sem autenticação. Publicação ainda não foi confirmada. |
+| Área dedicada de Integrações / WhatsApp Business | IMPLEMENTADO | O painel separa conexão Meta das Automações, mostra estados conectado/não conectado e oculta segredos. Embedded Signup está apenas preparado na interface e documentado. |
+| Ambiente Meta Review | BLOQUEADO | Estratégia registrada em `docs/meta-review.md`; role restrita, conta e tenant demo não foram criados porque a matriz granular de papéis/RLS ainda precisa ser implementada e validada. |
 | Matriz universal de notificações | IMPLEMENTADO | Regras/seeds e geração estão nas migrations; regras dependentes de Meta nascem inativas. |
 | Webhook Meta assinado + tracking de status | VALIDADO EM TESTE | Em 05/10/2026, o callback Supabase permaneceu verificado na Meta, o campo `messages` v26.0 foi assinado e o painel confirmou o envio de uma amostra ao servidor. A amostra usa `phone_number_id` fictício e foi corretamente ignorada pelo isolamento de tenant; tráfego real permanece bloqueado pelo estado externo da conta. |
 | Chatbot universal de agendamento | EM IMPLEMENTAÇÃO | Persistência, estados, outbox, webhook e configuração existem, mas `ARCHITECTURE.md` ainda manda implementar o processador da máquina de estados e ativar piloto. |
@@ -69,6 +72,8 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 - Personalização visual existente não autoriza mudanças no Core, RLS, agenda, billing ou integrações.
 
 ## Problemas conhecidos
+
+- `contato@chronasystems.com.br` aparece como canal corporativo em preparação e precisa ser ativado externamente antes de ser tratado como canal único de suporte e privacidade.
 
 - A divergência de migrations identificada em 01/10/2026 foi reconciliada no Git adotando o histórico remoto como canônico, sem `migration repair` e sem reaplicar migrations antigas. `migration list --linked` confirmou alinhamento integral até `20260920040000`.
 - O isolamento entre tenants está presente nos helpers/RLS, mas várias policies `ALL` autorizam qualquer membro do tenant; ainda falta uma matriz granular para `owner`, `receptionist` e `barber`.

@@ -289,6 +289,8 @@ h3 {
   justify-content: space-between;
   align-items: center;
 }
+.institutional-footer{padding:38px 0;background:#12100f;color:#fff;border-top-color:#3a2c23}.institutional-footer .container{align-items:flex-start;gap:32px}.institutional-footer b,.institutional-footer span{display:block}.institutional-footer span{margin-top:4px;color:#c8bbb0;font-size:14px}.institutional-footer nav{display:flex;justify-content:flex-end;gap:18px;flex-wrap:wrap}.institutional-footer a{color:#f6e8dd;text-decoration:none}.institutional-footer a:hover{color:#ff7a2f}
+.integration-breadcrumb{margin:0 0 14px;color:var(--muted);font-size:14px}.integration-breadcrumb span{padding:0 7px;color:var(--accent)}.integration-panel{display:grid;gap:22px}.integration-account{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;overflow:hidden;border:1px solid var(--line);border-radius:18px;background:var(--line)}.integration-account>div{padding:18px;background:var(--paper)}.integration-account small,.integration-account b{display:block}.integration-account small{color:var(--muted);margin-bottom:5px}.integration-empty{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;padding:22px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--paper) 94%,var(--primary) 6%)}.integration-empty h3,.integration-empty p{margin:0}.integration-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:15px;background:#1f9d61;color:white;font-weight:800}.integration-notice,.integration-safety{display:flex;align-items:flex-start;gap:12px;padding:16px 18px;border-radius:14px;background:color-mix(in srgb,var(--primary) 8%,var(--paper));border-left:4px solid var(--primary)}.integration-notice b,.integration-safety b{min-width:190px}.integration-notice span,.integration-safety span{color:var(--muted)}
 .modal {
   position: fixed;
   inset: 0;
@@ -2127,3 +2129,4 @@ body[data-tenant="chrona"] .chrona-platform td {
   .queue-admin-main .row-actions { width:100%; }
   .queue-admin-main .row-actions .btn { flex:1; }
 }
+@media(max-width:700px){.institutional-footer .container{display:grid}.institutional-footer nav{justify-content:flex-start}.integration-account{grid-template-columns:1fr}.integration-empty{grid-template-columns:auto 1fr}.integration-empty .badge{grid-column:1/-1;justify-self:start}.integration-notice,.integration-safety{display:grid}.integration-notice b,.integration-safety b{min-width:0}}
