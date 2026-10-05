@@ -8,6 +8,7 @@
 - Nome empresarial: **69.470.227 ALBERTO SILVA AZEVEDO JUNIOR**
 - CNPJ: **69.470.227/0001-05**
 - Município/UF: **Uberlândia/MG**
+- E-mail oficial: **azevedo.alberto1832@gmail.com**
 - Situação cadastral: ativa desde 05/10/2026, conforme CCMEI apresentado pelo titular.
 
 ## Produto e uso legítimo do WhatsApp
@@ -98,10 +99,9 @@ Preencher somente no momento da solicitação:
 
 ## Bloqueadores antes da avaliação
 
-1. Ativar e testar `contato@chronasystems.com.br`.
-2. Resolver a restrição atual da conta empresarial WhatsApp junto à Meta.
-3. Configurar o Embedded Signup real e redirects.
-4. Implementar/testar a permissão mínima do reviewer no backend/RLS.
-5. Criar tenant demo sintético e entregar credenciais fora do Git.
-6. Gravar o fluxo real com número e destinatário de teste.
-7. Documentar somente as permissões Meta efetivamente solicitadas.
+1. Resolver a restrição atual da conta empresarial WhatsApp junto à Meta.
+2. Configurar o Embedded Signup real e redirects.
+3. Implementar/testar a permissão mínima do reviewer no backend/RLS.
+4. Criar tenant demo sintético e entregar credenciais fora do Git.
+5. Gravar o fluxo real com número e destinatário de teste.
+6. Documentar somente as permissões Meta efetivamente solicitadas.

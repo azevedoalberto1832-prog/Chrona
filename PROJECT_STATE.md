@@ -73,7 +73,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 
 ## Problemas conhecidos
 
-- `contato@chronasystems.com.br` aparece como canal corporativo em preparação e precisa ser ativado externamente antes de ser tratado como canal único de suporte e privacidade.
+- O canal oficial atual de contato e privacidade é `azevedo.alberto1832@gmail.com`, vinculado ao titular do MEI.
 
 - A divergência de migrations identificada em 01/10/2026 foi reconciliada no Git adotando o histórico remoto como canônico, sem `migration repair` e sem reaplicar migrations antigas. `migration list --linked` confirmou alinhamento integral até `20260920040000`.
 - O isolamento entre tenants está presente nos helpers/RLS, mas várias policies `ALL` autorizam qualquer membro do tenant; ainda falta uma matriz granular para `owner`, `receptionist` e `barber`.
