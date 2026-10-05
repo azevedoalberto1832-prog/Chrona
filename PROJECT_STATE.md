@@ -33,7 +33,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | Fila de automações para n8n | IMPLEMENTADO | Edge Function, lease, deduplicação e protocolo documentados. Operação externa contínua não foi comprovada nesta revisão. |
 | Conexão Meta Cloud API por tenant | IMPLEMENTADO | Edge Function e schema existem; token é tratado server-side/Vault. Conexão real de cada tenant não foi comprovada nesta revisão. |
 | Matriz universal de notificações | IMPLEMENTADO | Regras/seeds e geração estão nas migrations; regras dependentes de Meta nascem inativas. |
-| Webhook Meta assinado + tracking de status | IMPLEMENTADO | Edge Function/schema existem. Validação operacional real do callback permanece pendente segundo documentação. |
+| Webhook Meta assinado + tracking de status | VALIDADO EM TESTE | Em 05/10/2026, o callback Supabase permaneceu verificado na Meta, o campo `messages` v26.0 foi assinado e o painel confirmou o envio de uma amostra ao servidor. A amostra usa `phone_number_id` fictício e foi corretamente ignorada pelo isolamento de tenant; tráfego real permanece bloqueado pelo estado externo da conta. |
 | Chatbot universal de agendamento | EM IMPLEMENTAÇÃO | Persistência, estados, outbox, webhook e configuração existem, mas `ARCHITECTURE.md` ainda manda implementar o processador da máquina de estados e ativar piloto. |
 | Hostname dedicado Palazzo no frontend | PUBLICADO | `chronasystem.com.br` limpa o parâmetro legado e exibe somente a plataforma; Palazzo abre diretamente em `palazzo.chronasystem.com.br`. Links internos, onboarding e retorno ao site usam a URL canônica, conferida no HTTPS após o deploy `60c68d1`. |
 | Biblioteca controlada de landing pages | VALIDADO | Renderer único em `site-engine.js`, nove templates, treze paletas, doze pares tipográficos, variantes allowlisted, seções ordenáveis/ocultáveis e preview do Admin. Há cinco direções específicas para beleza/estética, sem fork por tenant. |
@@ -80,16 +80,18 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 - O processador completo da máquina de estados do chatbot ainda aparece como próximo passo na arquitetura.
 - A Vercel ainda não possui o domínio curinga `*.chronasystem.com.br`; o código está preparado para hostnames genéricos, mas somente Palazzo está marcado como subdomínio ativo e os demais usam fallback no domínio principal.
 - A autenticação global por WhatsApp OTP permanece desligada: a Meta está conectada para Palazzo, mas não existe template OTP aprovado/configurado nem Auth Hook ativo.
+- Em 05/10/2026, o WhatsApp Manager exibiu como `Banned` tanto a conta associada ao número oficial `+55 34 8413-3355` quanto a conta de teste. O app Chrona System também permanece não publicado. Não ativar tráfego real, cobrança, templates ou piloto antes de resolver a restrição na Meta e validar uma mensagem real de ida e volta.
+- O `phone_number_id` oficial exibido pela Meta coincide com o registro da Palazzo, mas o ID de conta WhatsApp Business mostrado no painel difere do `business_account_id` salvo na Chrona. Confirmar a associação canônica antes de reconectar ou alterar o registro.
 - README descreve várias capacidades como funcionalidades; agentes devem confirmar cada uma contra código/migrations antes de elevar seu estado para VALIDADO/PUBLICADO.
 - A correção de CORS do onboarding foi publicada e validada por preflight nos domínios Chrona, GitHub Pages e ambiente local. A rota universal de verificação do Super Admin também foi publicada e teve seu carregamento confirmado; falta somente uma nova validação autenticada pelo usuário no painel.
 
 ## Última alteração relevante
 
-Em 01/10/2026, foi concluída a linha de base das fases 1–5 contra o Supabase remoto. O histórico local de migrations foi reconciliado com a linhagem remota sem `repair` nem reaplicação das versões históricas, e `migration list --linked` confirmou alinhamento integral até `20260920040000`. A auditoria confirmou RLS nas tabelas públicas e isolamento correto dos helpers para o owner Palazzo, além do acesso transversal intencional do Super Admin. A leitura de “Próximos atendimentos” continua corrigida para excluir registros vencidos ainda marcados como agendados, preservando-os no histórico.
+Em 05/10/2026, o webhook Meta foi confirmado, o campo `messages` v26.0 foi assinado e uma amostra do painel chegou com sucesso ao endpoint. A amostra não persistiu, conforme esperado, porque usa um ID de telefone fictício sem tenant. O piloto real está bloqueado porque as contas aparecem como `Banned` no WhatsApp Manager e o app ainda não está publicado. A linha de base das fases 1–5 e o alinhamento das migrations permanecem válidos.
 
 ## Próximo incremento recomendado
 
-Aprovar e implementar uma matriz de permissões por papel, seguida de testes negativos automatizados para dois tenants. A primeira migration de endurecimento de Storage já pode ser validada/publicada sobre a linhagem reconciliada. Lifecycle e capabilities devem ser modelados como contratos centrais antes de expandir billing, Tenant Builder ou integrações externas.
+Resolver a restrição `Banned` no WhatsApp Manager e confirmar o WABA ID canônico antes de qualquer piloto Meta. Em paralelo, implementar a matriz de permissões por papel, seguida de testes negativos automatizados para dois tenants. Lifecycle e capabilities devem ser modelados como contratos centrais antes de expandir billing ou Tenant Builder.
 
 ## Não fazer
 
