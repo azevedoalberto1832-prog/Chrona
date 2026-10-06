@@ -1,6 +1,6 @@
 # Preparação de avaliação Meta — Chrona Systems
 
-> Estado em 05/10/2026. Este documento não contém credenciais, tokens ou segredos.
+> Estado em 06/10/2026. Este documento não contém credenciais, tokens ou segredos.
 
 ## Identificação
 
@@ -10,6 +10,15 @@
 - Município/UF: **Uberlândia/MG**
 - E-mail oficial: **azevedo.alberto1832@gmail.com**
 - Situação cadastral: ativa desde 05/10/2026, conforme CCMEI apresentado pelo titular.
+
+## Verificações externas concluídas e em andamento
+
+- O domínio `chronasystem.com.br` foi adicionado ao portfólio empresarial e verificado pela Meta por meta tag em 06/10/2026.
+- A verificação empresarial de **69.470.227 ALBERTO SILVA AZEVEDO JUNIOR** foi enviada em 06/10/2026 e aparece como **Em análise**.
+- A Meta informa prazo aproximado de dois dias úteis para a análise empresarial.
+- A comprovação foi aceita pelo domínio verificado; o fluxo não solicitou upload do CCMEI.
+- O app `Chrona Systems` (ID `931779682859586`) continua **Não publicado** enquanto a verificação empresarial está pendente.
+- A **Verificação do acesso** como provedora de tecnologia permanece desabilitada até a aprovação da empresa; depois de iniciada, a Meta informa análise em aproximadamente cinco dias.
 
 ## Produto e uso legítimo do WhatsApp
 
@@ -70,7 +79,8 @@ No estado atual, parte das policies autoriza qualquer membro do tenant. Reutiliz
 
 ## Embedded Signup — pendências reais
 
-- resolver o estado elegível da conta empresarial Meta;
+- aguardar a aprovação da verificação empresarial e concluir a Verificação do acesso como provedora de tecnologia;
+- resolver separadamente a restrição permanente da conta empresarial WhatsApp;
 - confirmar App ID, Facebook Login for Business e `config_id` externos;
 - cadastrar domínios e redirects de produção;
 - criar troca de código server-side sem expor App Secret;
@@ -99,9 +109,11 @@ Preencher somente no momento da solicitação:
 
 ## Bloqueadores antes da avaliação
 
-1. Resolver a restrição atual da conta empresarial WhatsApp junto à Meta.
-2. Configurar o Embedded Signup real e redirects.
-3. Implementar/testar a permissão mínima do reviewer no backend/RLS.
-4. Criar tenant demo sintético e entregar credenciais fora do Git.
-5. Gravar o fluxo real com número e destinatário de teste.
-6. Documentar somente as permissões Meta efetivamente solicitadas.
+1. Aguardar a decisão da verificação empresarial enviada em 06/10/2026.
+2. Concluir a Verificação do acesso como provedora de tecnologia.
+3. Resolver a restrição atual da conta empresarial WhatsApp junto à Meta.
+4. Configurar o Embedded Signup real e redirects.
+5. Implementar/testar a permissão mínima do reviewer no backend/RLS.
+6. Criar tenant demo sintético e entregar credenciais fora do Git.
+7. Gravar o fluxo real com número e destinatário de teste.
+8. Documentar somente as permissões Meta efetivamente solicitadas.

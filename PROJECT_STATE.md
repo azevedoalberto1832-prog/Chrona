@@ -55,6 +55,8 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | Palazzo / hostname dedicado | PUBLICADO | GitHub Pages publicou o commit `96d4219`; o domínio principal com query e o subdomínio dedicado responderam com paridade funcional/visual. |
 | n8n | IMPLEMENTADO | Contrato server-side da fila está pronto; execução de worker externo em produção não foi comprovada. |
 | Meta WhatsApp Cloud API v26.0 | EM IMPLEMENTAÇÃO | Código de conexão/envio/webhook existe. Faltam confirmações externas de segredos, callback e templates para operação real. |
+| Domínio institucional na Meta | VALIDADO | `chronasystem.com.br` foi verificado por meta tag em 06/10/2026 e aparece como Verified no portfólio empresarial. |
+| Verificação empresarial Meta | EM ANÁLISE | Dados do MEI foram enviados em 06/10/2026; o painel informa prazo aproximado de dois dias úteis. A Verificação do acesso e a publicação do app aguardam essa decisão. |
 | Supabase Vault para token Meta | IMPLEMENTADO | Arquitetura/migrations/Edge Functions foram desenhadas para guardar somente referência operacional ao segredo. |
 
 ## Decisões vigentes
@@ -85,18 +87,19 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 - O processador completo da máquina de estados do chatbot ainda aparece como próximo passo na arquitetura.
 - A Vercel ainda não possui o domínio curinga `*.chronasystem.com.br`; o código está preparado para hostnames genéricos, mas somente Palazzo está marcado como subdomínio ativo e os demais usam fallback no domínio principal.
 - A autenticação global por WhatsApp OTP permanece desligada: a Meta está conectada para Palazzo, mas não existe template OTP aprovado/configurado nem Auth Hook ativo.
-- Em 05/10/2026, o WhatsApp Manager exibiu como `Banned` tanto a conta associada ao número oficial `+55 34 8413-3355` quanto a conta de teste. O app Chrona System também permanece não publicado. Não ativar tráfego real, cobrança, templates ou piloto antes de resolver a restrição na Meta e validar uma mensagem real de ida e volta.
+- Em 05/10/2026, o WhatsApp Manager exibiu como `Banned` tanto a conta associada ao número oficial `+55 34 8413-3355` quanto a conta de teste. O recurso permaneceu desabilitado após a análise da Meta, que apontou violação dos Termos de Uso Aceitável sem identificar a mensagem ou ação específica. A restrição é separada do estado de publicação do app e da verificação empresarial. Não ativar tráfego real, cobrança, templates ou piloto antes de resolver a restrição e validar uma mensagem real de ida e volta.
+- Em 06/10/2026, `chronasystem.com.br` foi verificado na Meta e a verificação empresarial do MEI foi enviada. O status atual é `Em análise`; enquanto isso, a Verificação do acesso está desabilitada e o app permanece `Não publicado`.
 - O `phone_number_id` oficial exibido pela Meta coincide com o registro da Palazzo, mas o ID de conta WhatsApp Business mostrado no painel difere do `business_account_id` salvo na Chrona. Confirmar a associação canônica antes de reconectar ou alterar o registro.
 - README descreve várias capacidades como funcionalidades; agentes devem confirmar cada uma contra código/migrations antes de elevar seu estado para VALIDADO/PUBLICADO.
 - A correção de CORS do onboarding foi publicada e validada por preflight nos domínios Chrona, GitHub Pages e ambiente local. A rota universal de verificação do Super Admin também foi publicada e teve seu carregamento confirmado; falta somente uma nova validação autenticada pelo usuário no painel.
 
 ## Última alteração relevante
 
-Em 05/10/2026, o webhook Meta foi confirmado, o campo `messages` v26.0 foi assinado e uma amostra do painel chegou com sucesso ao endpoint. A amostra não persistiu, conforme esperado, porque usa um ID de telefone fictício sem tenant. O piloto real está bloqueado porque as contas aparecem como `Banned` no WhatsApp Manager e o app ainda não está publicado. A linha de base das fases 1–5 e o alinhamento das migrations permanecem válidos.
+Em 06/10/2026, o domínio oficial foi verificado e a verificação empresarial foi enviada à Meta, ficando `Em análise` com prazo informado de aproximadamente dois dias úteis. O app continua não publicado porque a Verificação do acesso só pode começar depois dessa aprovação. A restrição `Banned` do WhatsApp permanece como bloqueio independente para o piloto real.
 
 ## Próximo incremento recomendado
 
-Resolver a restrição `Banned` no WhatsApp Manager e confirmar o WABA ID canônico antes de qualquer piloto Meta. Em paralelo, implementar a matriz de permissões por papel, seguida de testes negativos automatizados para dois tenants. Lifecycle e capabilities devem ser modelados como contratos centrais antes de expandir billing ou Tenant Builder.
+Aguardar a decisão empresarial da Meta e, quando aprovada, iniciar a Verificação do acesso como provedora de tecnologia. Em paralelo, resolver a restrição `Banned`, confirmar o WABA ID canônico e implementar a matriz de permissões do ambiente de avaliação antes de qualquer piloto real.
 
 ## Não fazer
 
