@@ -92,11 +92,16 @@ Nenhum App ID, permissão ou credencial foi inventado no frontend.
 
 ## Permissões Meta
 
-Preencher somente no momento da solicitação:
-
 | Permissão solicitada | Funcionalidade que a utiliza | Evidência |
 | --- | --- | --- |
-| A definir | A definir após configuração oficial | A definir |
+| `whatsapp_business_messaging` | Confirmações, lembretes e atendimento autorizado pelo número do tenant | Chamada de teste concluída na Meta; justificativa salva no App Review em 06/10/2026. |
+| `whatsapp_business_management` | Identificação da WABA/número, estado da conexão, templates e webhook autorizados pelo tenant | Chamada de teste concluída; justificativa salva no App Review. |
+| `manage_app_solution` | Relação de solução parceira necessária ao cadastro incorporado de empresas clientes | Justificativa salva; ainda falta uma chamada obrigatória de teste. |
+| `business_management` | Consulta dos ativos comerciais escolhidos pelo administrador durante o cadastro incorporado | Justificativa salva; ainda falta uma chamada obrigatória de teste. |
+| `public_profile` | Identificação básica do administrador no Login do Facebook para Empresas | Duas chamadas de teste registradas; falta confirmar conformidade no formulário. |
+| `email` | Identificação/contato do administrador no Login do Facebook para Empresas | Falta confirmar necessidade mínima e conformidade no formulário. |
+
+`whatsapp_business_manage_events` foi removida da solicitação em 06/10/2026. Essa permissão é destinada ao envio de eventos de conversão/publicidade à Meta e não corresponde ao fluxo atual da Chrona. Não readicionar sem uma funcionalidade real, documentação e base de consentimento específicas.
 
 ## Segurança revisada
 
