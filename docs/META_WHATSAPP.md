@@ -14,13 +14,18 @@ No painel do tenant, abra **Automações → WhatsApp oficial**, informe os trê
 
 O fluxo preferencial usa o Facebook Login for Business e o Embedded Signup. O frontend recebe somente o código temporário e os identificadores escolhidos pelo administrador. A Edge Function autenticada `whatsapp-embedded-signup` troca o código usando `META_APP_ID` e `META_APP_SECRET`, valida a WABA e o número na Graph API e reaproveita a RPC segura que grava a conexão no Vault.
 
-Antes de habilitar o botão em produção:
+Configuração criada na Meta em 06/10/2026:
 
-1. criar a configuração de Login for Business na Meta e copiar o `config_id` público para `META_EMBEDDED_SIGNUP_CONFIG_ID` em `app.js`;
-2. confirmar `META_APP_ID` e `META_APP_SECRET` nos segredos das Edge Functions;
-3. publicar `whatsapp-embedded-signup` com verificação JWT ativa;
-4. testar com um tenant de demonstração e uma WABA elegível;
-5. confirmar que cancelamento, erro e sucesso não expõem o token ao navegador.
+- `config_id`: `1091720416989401` (identificador público, usado pelo SDK no navegador);
+- modelo: Cadastro Incorporado do WhatsApp com token de usuário do sistema;
+- validade informada pela Meta: 60 dias;
+- permissões: `whatsapp_business_management` e `whatsapp_business_messaging`.
+
+O botão de produção está habilitado no frontend. Para concluir a validação operacional:
+
+1. testar com um tenant de demonstração e uma WABA elegível;
+2. confirmar que cancelamento, erro e sucesso não expõem o token ao navegador;
+3. definir rotina de renovação/reconexão antes do vencimento de 60 dias ou migrar para a opção definitiva que a Meta liberar após a Verificação de Acesso.
 
 A conexão manual permanece recolhida como recurso de suporte técnico enquanto o cadastro incorporado não estiver validado.
 

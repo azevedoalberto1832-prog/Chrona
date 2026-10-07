@@ -1,9 +1,9 @@
 const SUPABASE_URL = "https://qcjjqdkjfvnbslbpnrgk.supabase.co";
 const SUPABASE_KEY = "sb_publishable_27mV2bABNSGQYPkGEF-T4g_XBQtb2r7";
 const META_APP_ID = "931779682859586";
-// Public identifier created in Facebook Login for Business. It is not a
-// secret, but remains empty until the configuration is finalized in Meta.
-const META_EMBEDDED_SIGNUP_CONFIG_ID = "";
+// Public identifier created in Facebook Login for Business. It is safe to
+// expose in the browser; the app secret remains restricted to the backend.
+const META_EMBEDDED_SIGNUP_CONFIG_ID = "1091720416989401";
 const PAGE_PARAMS = new URLSearchParams(location.search);
 const PLATFORM_ENTRY = PAGE_PARAMS.has("platform");
 const SUPPORT_SLUG = PLATFORM_ENTRY ? PAGE_PARAMS.get("support") : null;

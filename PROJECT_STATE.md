@@ -33,7 +33,7 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 | Fila de automações para n8n | IMPLEMENTADO | Edge Function, lease, deduplicação e protocolo documentados. Operação externa contínua não foi comprovada nesta revisão. |
 | Conexão Meta Cloud API por tenant | IMPLEMENTADO | Edge Function e schema existem; token é tratado server-side/Vault. Conexão real de cada tenant não foi comprovada nesta revisão. |
 | Identidade institucional e páginas jurídicas | IMPLEMENTADO | Footer público identifica Chrona Systems, nome empresarial, CNPJ e município; URLs estáveis de Privacidade, Termos e Contato existem sem autenticação. Publicação ainda não foi confirmada. |
-| Área dedicada de Integrações / WhatsApp Business | EM IMPLEMENTAÇÃO | O painel separa conexão Meta das Automações e agora possui fluxo de Embedded Signup com troca do código em Edge Function autenticada; o botão permanece desativado até existir `config_id`, segredos confirmados, deploy e teste real. A conexão manual ficou recolhida para suporte. |
+| Área dedicada de Integrações / WhatsApp Business | EM IMPLEMENTAÇÃO | O painel separa conexão Meta das Automações e possui fluxo de Embedded Signup com troca do código em Edge Function autenticada. A configuração pública `1091720416989401` foi criada e ligada ao frontend; a função e os segredos foram publicados. Falta o teste autenticado com uma WABA elegível. A conexão manual ficou recolhida para suporte. |
 | Ambiente Meta Review | BLOQUEADO | Estratégia registrada em `docs/meta-review.md`; role restrita, conta e tenant demo não foram criados porque a matriz granular de papéis/RLS ainda precisa ser implementada e validada. |
 | Matriz universal de notificações | IMPLEMENTADO | Regras/seeds e geração estão nas migrations; regras dependentes de Meta nascem inativas. |
 | Webhook Meta assinado + tracking de status | VALIDADO EM TESTE | Em 05/10/2026, o callback Supabase permaneceu verificado na Meta, o campo `messages` v26.0 foi assinado e o painel confirmou o envio de uma amostra ao servidor. A amostra usa `phone_number_id` fictício e foi corretamente ignorada pelo isolamento de tenant; tráfego real permanece bloqueado pelo estado externo da conta. |
@@ -90,17 +90,18 @@ A camada Meta/WhatsApp possui schema, Edge Functions, fila, webhook e estruturas
 - Em 05/10/2026, o WhatsApp Manager exibiu como `Banned` tanto a conta associada ao número oficial `+55 34 8413-3355` quanto a conta de teste. O recurso permaneceu desabilitado após a análise da Meta, que apontou violação dos Termos de Uso Aceitável sem identificar a mensagem ou ação específica. A restrição é separada do estado de publicação do app e da verificação empresarial. Não ativar tráfego real, cobrança, templates ou piloto antes de resolver a restrição e validar uma mensagem real de ida e volta.
 - Em 06/10/2026, `chronasystem.com.br` foi verificado na Meta e a verificação empresarial do MEI foi enviada. O status atual é `Em análise`; enquanto isso, a Verificação do acesso está desabilitada e o app permanece `Não publicado`.
 - A solicitação de App Review foi reduzida ao uso real: `whatsapp_business_manage_events` foi removida em 06/10/2026 porque a Chrona não envia eventos de conversão/publicidade. As justificativas de mensagens, gestão da WABA, solução parceira e ativos comerciais foram salvas, mas o envio final não foi realizado.
+- A configuração de Cadastro Incorporado `1091720416989401` usa token de usuário do sistema com validade de 60 dias e somente `whatsapp_business_management` e `whatsapp_business_messaging`. Planejar renovação/reconexão antes do vencimento ou migrar para a opção definitiva liberada após a Verificação de Acesso.
 - O `phone_number_id` oficial exibido pela Meta coincide com o registro da Palazzo, mas o ID de conta WhatsApp Business mostrado no painel difere do `business_account_id` salvo na Chrona. Confirmar a associação canônica antes de reconectar ou alterar o registro.
 - README descreve várias capacidades como funcionalidades; agentes devem confirmar cada uma contra código/migrations antes de elevar seu estado para VALIDADO/PUBLICADO.
 - A correção de CORS do onboarding foi publicada e validada por preflight nos domínios Chrona, GitHub Pages e ambiente local. A rota universal de verificação do Super Admin também foi publicada e teve seu carregamento confirmado; falta somente uma nova validação autenticada pelo usuário no painel.
 
 ## Última alteração relevante
 
-Em 06/10/2026, o domínio oficial foi verificado e a verificação empresarial foi enviada à Meta, ficando `Em análise` com prazo informado de aproximadamente dois dias úteis. O app continua não publicado porque a Verificação do acesso só pode começar depois dessa aprovação. A restrição `Banned` do WhatsApp permanece como bloqueio independente para o piloto real.
+Em 06/10/2026, a configuração de Cadastro Incorporado `1091720416989401` foi criada a partir do modelo oficial de token de 60 dias e conectada ao frontend. A Edge Function autenticada já está publicada e mantém a troca do código e o segredo do app no servidor. O app continua não publicado enquanto a verificação empresarial está `Em análise`; a restrição `Banned` do WhatsApp permanece como bloqueio independente para o piloto real.
 
 ## Próximo incremento recomendado
 
-Aguardar a decisão empresarial da Meta e, quando aprovada, iniciar a Verificação do acesso como provedora de tecnologia. Em paralelo, resolver a restrição `Banned`, confirmar o WABA ID canônico e implementar a matriz de permissões do ambiente de avaliação antes de qualquer piloto real.
+Validar o Cadastro Incorporado autenticado com uma WABA elegível. Em paralelo, aguardar a decisão empresarial da Meta, resolver a restrição `Banned`, confirmar o WABA ID canônico e implementar a matriz de permissões do ambiente de avaliação antes de qualquer piloto real.
 
 ## Não fazer
 
