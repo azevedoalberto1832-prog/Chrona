@@ -37,7 +37,7 @@ Navegador Chrona
 - Tokens Meta, service role, webhook secret e credenciais do n8n permanecem server-side.
 - O n8n é infraestrutura interna; o reviewer não acessa seu painel.
 - O webhook valida assinatura e resolve o tenant pelo número conectado.
-- A integração existente usa conexão manual segura. A tela foi preparada para receber Embedded Signup, ainda não habilitado.
+- A integração mantém conexão manual segura como recurso técnico e oferece Embedded Signup como fluxo principal. O código temporário chega ao frontend e é trocado server-side pela Edge Function autenticada; o App Secret não é exposto ao navegador.
 
 ## URLs públicas
 
@@ -57,7 +57,7 @@ Navegador Chrona
 5. Entrar no tenant de demonstração com dados fictícios.
 6. Abrir **Integrações → WhatsApp Business**.
 7. Conferir o estado da conexão e sua finalidade operacional.
-8. Quando habilitado, iniciar o Embedded Signup e retornar à Chrona.
+8. Iniciar o Embedded Signup pela configuração `1091720416989401` e retornar à Chrona.
 9. Demonstrar confirmação ou lembrete com destinatário de teste e consentimento.
 
 ## Credenciais do reviewer
@@ -81,14 +81,25 @@ No estado atual, parte das policies autoriza qualquer membro do tenant. Reutiliz
 
 - aguardar a aprovação da verificação empresarial e concluir a Verificação do acesso como provedora de tecnologia;
 - resolver separadamente a restrição permanente da conta empresarial WhatsApp;
-- confirmar App ID, Facebook Login for Business e `config_id` externos;
-- cadastrar domínios e redirects de produção;
-- criar troca de código server-side sem expor App Secret;
+- App ID `931779682859586`, Facebook Login for Business e `config_id` público `1091720416989401` foram confirmados no painel da Meta;
+- domínio, URLs institucionais e URL do site estão cadastrados no app;
+- a troca de código server-side foi publicada sem expor o App Secret;
 - vincular WABA e número ao tenant correto;
 - persistir apenas identificadores apropriados e referência server-side do segredo;
 - testar callback, cancelamento, reautorização e isolamento entre dois tenants.
 
-Nenhum App ID, permissão ou credencial foi inventado no frontend.
+A configuração atual usa token de usuário do sistema com validade informada de 60 dias e somente `whatsapp_business_management` e `whatsapp_business_messaging`. Definir renovação/reconexão antes do vencimento ou migrar para a modalidade definitiva liberada depois da Verificação de Acesso.
+
+## Instruções de teste — rascunho para o formulário da Meta
+
+Não enviar este texto até o tenant de avaliação, a role restrita e as credenciais externas ao Git estarem validados.
+
+- Onde encontrar: `https://chronasystem.com.br/?tenant=<slug-demo>#admin`
+- A Chrona usa o Facebook Login for Business exclusivamente para o Cadastro Incorporado do WhatsApp. O administrador do tenant autoriza a WABA e o número que deseja conectar.
+- Após autenticar com a conta de avaliação, abrir **Integrações → WhatsApp Business** e escolher **Conectar com a Meta**.
+- Concluir o diálogo da Meta com os ativos de teste fornecidos e retornar ao Chrona. A tela deve exibir a WABA e o número conectados sem mostrar token ou App Secret.
+- A integração permite gerenciar a conexão e enviar confirmações/lembretes de agendamentos autorizados. Não envia publicidade nem eventos de conversão.
+- As credenciais e quaisquer números de teste devem ser entregues somente no campo seguro do App Review, nunca neste repositório.
 
 ## Permissões Meta
 
@@ -117,8 +128,8 @@ Nenhum App ID, permissão ou credencial foi inventado no frontend.
 1. Aguardar a decisão da verificação empresarial enviada em 06/10/2026.
 2. Concluir a Verificação do acesso como provedora de tecnologia.
 3. Resolver a restrição atual da conta empresarial WhatsApp junto à Meta.
-4. Configurar o Embedded Signup real e redirects.
-5. Implementar/testar a permissão mínima do reviewer no backend/RLS.
-6. Criar tenant demo sintético e entregar credenciais fora do Git.
+4. Implementar/testar a permissão mínima do reviewer no backend/RLS.
+5. Criar tenant demo sintético e entregar credenciais fora do Git.
+6. Validar o Embedded Signup com uma WABA elegível e confirmar o WABA ID canônico.
 7. Gravar o fluxo real com número e destinatário de teste.
-8. Documentar somente as permissões Meta efetivamente solicitadas.
+8. Preencher e enviar as instruções de teste somente depois que o ambiente restrito estiver pronto.
