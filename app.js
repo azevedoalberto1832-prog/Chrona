@@ -1,5 +1,9 @@
 const SUPABASE_URL = "https://qcjjqdkjfvnbslbpnrgk.supabase.co";
 const SUPABASE_KEY = "sb_publishable_27mV2bABNSGQYPkGEF-T4g_XBQtb2r7";
+const META_APP_ID = "931779682859586";
+// Public identifier created in Facebook Login for Business. It is not a
+// secret, but remains empty until the configuration is finalized in Meta.
+const META_EMBEDDED_SIGNUP_CONFIG_ID = "";
 const PAGE_PARAMS = new URLSearchParams(location.search);
 const PLATFORM_ENTRY = PAGE_PARAMS.has("platform");
 const SUPPORT_SLUG = PLATFORM_ENTRY ? PAGE_PARAMS.get("support") : null;
@@ -156,6 +160,64 @@ let whatsappConnection=null,automationRules=[],automationRuns=[],notificationSet
 // Keep the connection form stable if the admin screen is redrawn while the
 // user is typing. The token lives only in memory and is cleared after success.
 let whatsappConnectionDraft={businessAccountId:"",phoneNumberId:"",accessToken:""};
+let metaSdkPromise=null,embeddedSignupBusy=false;
+
+function loadMetaSdk(){
+  if(window.FB)return Promise.resolve(window.FB);
+  if(metaSdkPromise)return metaSdkPromise;
+  metaSdkPromise=new Promise((resolve,reject)=>{
+    const timeout=setTimeout(()=>reject(new Error("A Meta demorou para carregar. Tente novamente.")),15000);
+    window.fbAsyncInit=()=>{
+      clearTimeout(timeout);
+      window.FB.init({appId:META_APP_ID,cookie:true,xfbml:false,version:"v26.0"});
+      resolve(window.FB);
+    };
+    if(document.querySelector("#facebook-jssdk"))return;
+    const script=document.createElement("script");
+    script.id="facebook-jssdk";script.src="https://connect.facebook.net/pt_BR/sdk.js";
+    script.async=true;script.defer=true;script.crossOrigin="anonymous";
+    script.onerror=()=>{clearTimeout(timeout);metaSdkPromise=null;reject(new Error("Não foi possível carregar o cadastro da Meta."));};
+    document.head.appendChild(script);
+  });
+  return metaSdkPromise;
+}
+
+async function startEmbeddedSignup(){
+  if(embeddedSignupBusy)return;
+  if(!META_EMBEDDED_SIGNUP_CONFIG_ID)throw new Error("A configuração do cadastro incorporado ainda precisa ser concluída na Meta.");
+  embeddedSignupBusy=true;
+  try{
+    const FB=await loadMetaSdk();
+    const result=await new Promise((resolve,reject)=>{
+      let sessionInfo=null,loginCode="",settled=false;
+      const cleanup=()=>{clearTimeout(timer);window.removeEventListener("message",onMessage);};
+      const fail=(message)=>{if(settled)return;settled=true;cleanup();reject(new Error(message));};
+      const finish=()=>{if(settled||!sessionInfo||!loginCode)return;settled=true;cleanup();resolve({...sessionInfo,code:loginCode});};
+      const onMessage=(event)=>{
+        if(!/^https:\/\/([a-z0-9-]+\.)*facebook\.com$/i.test(event.origin))return;
+        let payload=event.data;
+        if(typeof payload==="string"){try{payload=JSON.parse(payload);}catch{return;}}
+        if(payload?.type!=="WA_EMBEDDED_SIGNUP")return;
+        if(payload.event==="FINISH"){
+          const businessAccountId=String(payload.data?.waba_id||"");
+          const phoneNumberId=String(payload.data?.phone_number_id||"");
+          if(!/^\d{5,30}$/.test(businessAccountId)||!/^\d{5,30}$/.test(phoneNumberId))return fail("A Meta não retornou os identificadores da conta.");
+          sessionInfo={businessAccountId,phoneNumberId};finish();
+        }else if(payload.event==="CANCEL")fail("Cadastro cancelado antes da conclusão.");
+        else if(payload.event==="ERROR")fail("A Meta informou uma falha no cadastro incorporado.");
+      };
+      const timer=setTimeout(()=>fail("O cadastro da Meta expirou. Inicie novamente."),120000);
+      window.addEventListener("message",onMessage);
+      FB.login((response)=>{
+        loginCode=String(response?.authResponse?.code||"");
+        if(!loginCode)return fail("A autorização da Meta não foi concluída.");
+        finish();
+      },{config_id:META_EMBEDDED_SIGNUP_CONFIG_ID,response_type:"code",override_default_response_type:true,extras:{feature:"whatsapp_embedded_signup",sessionInfoVersion:"3"}});
+    });
+    await edge("whatsapp-embedded-signup",{barbershopId:currentProfile.barbershop_id,...result});
+    await loadAdminData();render();toast("WhatsApp conectado pelo cadastro oficial da Meta");
+  }finally{embeddedSignupBusy=false;}
+}
 let crmPipelines=[],crmStages=[],crmOpportunities=[],activePipelineId="";
 let siteConfigRow=null,siteConfigPublished=null,siteConfigDraft=null,siteEditorConfig=null;
 const save = () => {};
@@ -888,9 +950,10 @@ function adminContent() {
     const connected=whatsappConnection?.status==="connected";
     const draftBusinessAccountId=whatsappConnectionDraft.businessAccountId||whatsappConnection?.business_account_id||"";
     const draftPhoneNumberId=whatsappConnectionDraft.phoneNumberId||whatsappConnection?.phone_number_id||"";
-    const connectionForm=canManageTenant()?`<form id="whatsapp-connect-form" autocomplete="off"><div class="form-grid"><label class="field"><span>ID numérico da conta WhatsApp Business</span><input name="businessAccountId" type="text" inputmode="numeric" pattern="[0-9]{5,30}" value="${esc(draftBusinessAccountId)}" autocomplete="off" autocapitalize="none" spellcheck="false" data-1p-ignore data-lpignore="true" required><small class="muted">Identificador da WABA vinculada ao estabelecimento.</small></label><label class="field"><span>ID numérico do número de telefone</span><input name="phoneNumberId" type="text" inputmode="numeric" pattern="[0-9]{5,30}" value="${esc(draftPhoneNumberId)}" autocomplete="off" autocapitalize="none" spellcheck="false" data-1p-ignore data-lpignore="true" required><small class="muted">Identificador técnico da Meta, não o telefone comum.</small></label><label class="field full"><span>Token permanente da Meta</span><input name="accessToken" type="password" value="${esc(whatsappConnectionDraft.accessToken)}" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-1p-ignore data-lpignore="true" placeholder="Cole o token para validar e guardar no cofre" required><small class="muted">Enviado diretamente à função segura, armazenado server-side e nunca retornado para esta página.</small></label></div><div class="modal-actions"><span></span><button class="btn btn-dark" type="submit">${connected?"Revalidar conexão":"Conectar WhatsApp"}</button></div></form>`:'<div class="empty">Somente o proprietário pode configurar a conexão. Usuários de avaliação visualizam o estado sem acesso a credenciais.</div>';
+    const embeddedReady=Boolean(META_EMBEDDED_SIGNUP_CONFIG_ID);
+    const connectionForm=canManageTenant()?`<div class="embedded-signup-card"><div><b>Cadastro oficial da Meta</b><span>Entre na Meta, escolha a empresa, a conta WhatsApp e o número. O token é trocado e guardado somente no servidor.</span></div><button class="btn btn-dark" type="button" data-meta-embedded ${embeddedReady?"":"disabled"}>${connected?"Conectar outra conta":"Conectar com a Meta"}</button>${embeddedReady?"":'<small class="muted">Disponível assim que a configuração do Login para Empresas for concluída.</small>'}</div><details class="manual-meta-connection"><summary>Conexão manual para suporte técnico</summary><form id="whatsapp-connect-form" autocomplete="off"><div class="form-grid"><label class="field"><span>ID numérico da conta WhatsApp Business</span><input name="businessAccountId" type="text" inputmode="numeric" pattern="[0-9]{5,30}" value="${esc(draftBusinessAccountId)}" autocomplete="off" autocapitalize="none" spellcheck="false" data-1p-ignore data-lpignore="true" required><small class="muted">Identificador da WABA vinculada ao estabelecimento.</small></label><label class="field"><span>ID numérico do número de telefone</span><input name="phoneNumberId" type="text" inputmode="numeric" pattern="[0-9]{5,30}" value="${esc(draftPhoneNumberId)}" autocomplete="off" autocapitalize="none" spellcheck="false" data-1p-ignore data-lpignore="true" required><small class="muted">Identificador técnico da Meta, não o telefone comum.</small></label><label class="field full"><span>Token permanente da Meta</span><input name="accessToken" type="password" value="${esc(whatsappConnectionDraft.accessToken)}" autocomplete="new-password" autocapitalize="none" spellcheck="false" data-1p-ignore data-lpignore="true" placeholder="Cole o token para validar e guardar no cofre" required><small class="muted">Enviado diretamente à função segura, armazenado server-side e nunca retornado para esta página.</small></label></div><div class="modal-actions"><span></span><button class="btn btn-outline" type="submit">${connected?"Revalidar manualmente":"Conectar manualmente"}</button></div></form></details>`:'<div class="empty">Somente o proprietário pode configurar a conexão. Usuários de avaliação visualizam o estado sem acesso a credenciais.</div>';
     const account=connected?`<div class="integration-account"><div><small>Empresa/conta vinculada</small><b>${esc(whatsappConnection.verified_name||db.settings.shop)}</b></div><div><small>WhatsApp Business Account</small><b>${esc(whatsappConnection.business_account_id||"Não informado")}</b></div><div><small>Número conectado</small><b>${esc(whatsappConnection.display_phone_number||"Identificador "+whatsappConnection.phone_number_id)}</b></div><div><small>Status do número</small><b>${esc(whatsappConnection.quality_rating||"Conectado")}</b></div></div>`:'<div class="integration-empty"><span class="integration-icon">W</span><div><h3>WhatsApp Business</h3><p>Ainda não há uma conta vinculada a este estabelecimento.</p></div><span class="badge red">Não conectado</span></div>';
-    return `<div class="integration-breadcrumb">Configurações <span>›</span> Integrações <span>›</span> WhatsApp Business</div><section class="panel integration-panel"><div class="toolbar"><div><div class="eyebrow">CANAL OFICIAL</div><h3 style="margin:5px 0 0">WhatsApp Business</h3><p class="muted">Conecte o número do estabelecimento para confirmações, lembretes e atendimento autorizado.</p></div><span class="badge ${connected?"green":"red"}">${connected?"Conectado":"Não conectado"}</span></div>${account}<div class="integration-notice"><b>Onboarding oficial em preparação</b><span>Esta tela está pronta para receber o Embedded Signup. Enquanto a configuração externa da Meta não estiver liberada, a conexão manual segura permanece disponível ao proprietário.</span></div>${connectionForm}<div class="integration-safety"><b>O que nunca aparece aqui</b><span>App Secret, webhook secret, service role, credenciais do n8n e tokens já armazenados.</span></div></section>`;
+    return `<div class="integration-breadcrumb">Configurações <span>›</span> Integrações <span>›</span> WhatsApp Business</div><section class="panel integration-panel"><div class="toolbar"><div><div class="eyebrow">CANAL OFICIAL</div><h3 style="margin:5px 0 0">WhatsApp Business</h3><p class="muted">Conecte o número do estabelecimento para confirmações, lembretes e atendimento autorizado.</p></div><span class="badge ${connected?"green":"red"}">${connected?"Conectado":"Não conectado"}</span></div>${account}${connectionForm}<div class="integration-safety"><b>O que nunca aparece aqui</b><span>App Secret, webhook secret, service role, credenciais do n8n e tokens já armazenados.</span></div></section>`;
   }
   if(adminTab === "profissionais") return `<section class="panel"><div class="toolbar"><span class="muted">Equipe e disponibilidade para agendamentos</span><button class="btn btn-dark" data-add-professional>+ Profissional</button></div><div class="list-cards">${PEOPLE.map(p=>`<div class="list-card"><span><b>${p.name}</b><br><small class="muted">${p.phone||"Sem telefone"}</small></span><span><button class="btn btn-ghost" data-edit-professional="${p.id}">Editar</button><button class="badge ${p.active?"green":"red"}" data-toggle-professional="${p.id}">${p.active?"Ativo":"Inativo"}</button></span></div>`).join("")||'<div class="empty">Nenhum profissional cadastrado.</div>'}</div></section>`;
   return `<section class="panel"><div class="toolbar"><div><div class="eyebrow">IDENTIDADE DA EMPRESA</div><h3 style="margin:5px 0 0">Página pública e operação</h3></div><a class="btn btn-outline" target="_blank" rel="noopener" href="${tenantPublicUrl(currentShop.slug)}">Visualizar página</a></div><div class="form-grid"><label class="field"><span>Nome da empresa</span><input id="set-shop" value="${esc(db.settings.shop)}"></label><label class="field"><span>WhatsApp</span><input id="set-phone" value="${esc(db.settings.phone)}"></label><label class="field"><span>Instagram</span><input id="set-instagram" value="${esc(db.settings.instagram)}" placeholder="@empresa"></label><label class="field"><span>Link da logo</span><input id="set-logo" value="${esc(db.settings.logo)}" placeholder="https://..."></label><label class="field full"><span>Endereço</span><input id="set-address" value="${esc(db.settings.address)}"></label><label class="field full"><span>Descrição da página pública</span><textarea id="set-description" rows="3">${esc(db.settings.description)}</textarea></label><label class="color-field"><input id="set-primary-color" type="color" value="${esc(db.settings.primaryColor)}"><span><b>Cor predominante</b><small>Marca, superfícies e ações</small></span></label><label class="color-field"><input id="set-secondary-color" type="color" value="${esc(db.settings.secondaryColor)}"><span><b>Cor da tinta</b><small>Textos, traços e contraste</small></span></label><div class="direction-config-note"><small>DIREÇÃO AUTOMÁTICA</small><b>${directionLabel(db.settings.visualDirection)}</b><span>A fonte e a composição acompanham as duas cores.</span></div><label class="field"><span>Abertura</span><input id="set-open" type="time" value="${db.settings.open}"></label><label class="field"><span>Fechamento</span><input id="set-close" type="time" value="${db.settings.close}"></label><label class="field"><span>Início do intervalo</span><input id="set-break-start" type="time" value="${db.settings.breakStart}"></label><label class="field"><span>Fim do intervalo</span><input id="set-break-end" type="time" value="${db.settings.breakEnd}"></label><label class="field full"><span>Saudação do WhatsApp</span><textarea id="set-greeting" rows="4">${esc(db.settings.greeting)}</textarea></label></div><div class="modal-actions"><span></span><button class="btn btn-dark" data-save-settings>Salvar configurações</button></div></section>`;
@@ -1029,6 +1092,11 @@ function bind() {
   document.querySelectorAll("[data-opportunity-status]").forEach((button)=>button.addEventListener("click",()=>updateOpportunity(button.dataset.opportunityId,{status:button.dataset.opportunityStatus},button.dataset.opportunityStatus==="won"?"Oportunidade ganha":button.dataset.opportunityStatus==="lost"?"Oportunidade perdida":"Oportunidade reaberta")));
   document.querySelectorAll("[data-delete-opportunity]").forEach((button)=>button.addEventListener("click",()=>confirmAdmin("A oportunidade será excluída definitivamente.",()=>rest(`crm_opportunities?id=eq.${button.dataset.deleteOpportunity}`,{method:"DELETE"}))));
   const whatsappConnectForm=document.querySelector("#whatsapp-connect-form");
+  document.querySelector("[data-meta-embedded]")?.addEventListener("click",async(event)=>{
+    const button=event.currentTarget;button.disabled=true;button.textContent="Abrindo a Meta…";
+    try{await startEmbeddedSignup();}
+    catch(error){toast(error.message);button.disabled=false;button.textContent=whatsappConnection?.status==="connected"?"Conectar outra conta":"Conectar com a Meta";}
+  });
   whatsappConnectForm?.querySelectorAll("input").forEach((input)=>input.addEventListener("input",()=>{
     whatsappConnectionDraft[input.name]=input.value;
   }));

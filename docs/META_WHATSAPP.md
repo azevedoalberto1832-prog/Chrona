@@ -10,6 +10,20 @@ O Chrona usa a Graph API `v26.0` e mantém um token permanente separado para cad
 
 No painel do tenant, abra **Automações → WhatsApp oficial**, informe os três valores e escolha **Conectar com a Meta**. O token é enviado diretamente à Edge Function autenticada, não é salvo no navegador e nunca é retornado pela API.
 
+## Cadastro incorporado
+
+O fluxo preferencial usa o Facebook Login for Business e o Embedded Signup. O frontend recebe somente o código temporário e os identificadores escolhidos pelo administrador. A Edge Function autenticada `whatsapp-embedded-signup` troca o código usando `META_APP_ID` e `META_APP_SECRET`, valida a WABA e o número na Graph API e reaproveita a RPC segura que grava a conexão no Vault.
+
+Antes de habilitar o botão em produção:
+
+1. criar a configuração de Login for Business na Meta e copiar o `config_id` público para `META_EMBEDDED_SIGNUP_CONFIG_ID` em `app.js`;
+2. confirmar `META_APP_ID` e `META_APP_SECRET` nos segredos das Edge Functions;
+3. publicar `whatsapp-embedded-signup` com verificação JWT ativa;
+4. testar com um tenant de demonstração e uma WABA elegível;
+5. confirmar que cancelamento, erro e sucesso não expõem o token ao navegador.
+
+A conexão manual permanece recolhida como recurso de suporte técnico enquanto o cadastro incorporado não estiver validado.
+
 ## Envio por template
 
 O endpoint interno de envio é:
